@@ -58,10 +58,16 @@ function setPal7 () shader:sendColor( "palette", A, A, B, B, B, B, A, A, X) end
 function setPal8 () shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
 
 local i = 0
+local turning = false
+local alternate = false
 function love.update(dt)
   if (dt > 0.4) then return end
-  i = i + (dt * 4)
-  if (i > 8) then i = i - 8 end
+  i = i + (dt * 10)
+  if (i > 8) then
+    i = i - 8
+    if (turning) then alternate = not alternate end
+    turning = not turning
+  end
 end
 
 function love.draw()
@@ -73,59 +79,60 @@ function love.draw()
   -- Draw ball background
   love.graphics.setShader( shader )
   -- Move forward animation
---[[
-  if (i - math.floor(i)) < 0.5 then
-    mesh:setTexture( texture1 )
+  if turning then
+    if (i - math.floor(i)) < 0.5 then
+      mesh:setTexture( texture1 )
+    else
+      mesh:setTexture( texture2 )
+    end
+    if (i < 1) then
+      if alternate then setPal1() else setPal5() end
+    elseif (i < 2) then
+      if alternate then setPal2() else setPal6() end
+    elseif (i < 3) then
+      if alternate then setPal3() else setPal7() end
+    elseif (i < 4) then
+      if alternate then setPal4() else setPal8() end
+    elseif (i < 5) then
+      if alternate then setPal5() else setPal1() end
+    elseif (i < 6) then
+      if alternate then setPal6() else setPal2() end
+    elseif (i < 7) then
+      if alternate then setPal7() else setPal3() end
+    elseif (i < 8) then
+      if alternate then setPal8() else setPal4() end
+    end
+    love.graphics.draw(mesh)
+
   else
-    mesh:setTexture( texture2 )
-  end
-  if (i < 1) then
-    setPal1()
-  elseif (i < 2) then
-    setPal2()
-  elseif (i < 3) then
-    setPal3()
-  elseif (i < 4) then
-    setPal4()
-  elseif (i < 5) then
-    setPal5()
-  elseif (i < 6) then
-    setPal6()
-  elseif (i < 7) then
-    setPal7()
-  elseif (i < 8) then
-    setPal8()
-  end
-  love.graphics.draw(mesh)
-  ]]
 
-  -- rotate animation
-  local drawMesh = mesh
-  setPal1()
-  if (i < 1) then
-    drawMesh:setTexture(rot1)
-  elseif (i < 2) then
-    drawMesh:setTexture(rot2)
-  elseif (i < 3) then
-    drawMesh:setTexture(rot3)
-  elseif (i < 4) then
-    drawMesh:setTexture(rot4)
-  elseif (i < 5) then
-    drawMesh = flipmesh
-    drawMesh:setTexture(rot3)
-  elseif (i < 6) then
-    drawMesh = flipmesh
-    drawMesh:setTexture(rot2)
-  elseif (i < 7) then
-    drawMesh = flipmesh
-    drawMesh:setTexture(rot1)
-  elseif (i < 8) then
-    drawMesh = flipmesh
-    setPal4()
-    drawMesh:setTexture(texture1)
+    -- rotate animation
+    local drawMesh = mesh
+    if alternate then setPal5() else setPal1() end
+    if (i < 1) then
+      drawMesh:setTexture(rot1)
+    elseif (i < 2) then
+      drawMesh:setTexture(rot2)
+    elseif (i < 3) then
+      drawMesh:setTexture(rot3)
+    elseif (i < 4) then
+      drawMesh:setTexture(rot4)
+    elseif (i < 5) then
+      drawMesh = flipmesh
+      drawMesh:setTexture(rot3)
+    elseif (i < 6) then
+      drawMesh = flipmesh
+      drawMesh:setTexture(rot2)
+    elseif (i < 7) then
+      drawMesh = flipmesh
+      drawMesh:setTexture(rot1)
+    elseif (i < 8) then
+      drawMesh = mesh
+      if alternate then setPal1() else setPal5() end
+      drawMesh:setTexture(texture1)
+    end
+    love.graphics.draw(drawMesh)
   end
-  love.graphics.draw(drawMesh)
-
 
   love.graphics.setShader( )
   love.graphics.setColor(0,0,0, 255)
