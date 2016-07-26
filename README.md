@@ -13,5 +13,11 @@ do a 180).
 Regular jumps move exactly a square forwards. You must release and
 re-time jumps to get another. Balls have a 0.25 square radius.
 
+the background image scrolls up as you move forward, down as you
+move backwards, and horizontally as you turn (in the same visual
+direction: turning left scrolls the background right)
+
 ## Todo:
-add a position/rotation counter and calculate the texture and palette from that
+
+* add a position/rotation counter and calculate the texture and palette from that
+* build the object position tables
