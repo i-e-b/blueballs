@@ -1,10 +1,13 @@
 local screenWidth, screenHeight
+local font
 
 function love.load()
   love.window.fullscreen = (love.system.getOS() == "Android")
   screenWidth, screenHeight = love.graphics.getDimensions( )
 
-
+  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() ")
+  font:setFilter("linear", "nearest")
+  love.graphics.setFont(font)
   -- green channel encodes palette index
   -- background is last color index
   -- the palette lookup can be simpler on PC, but this works on PC and mobile
@@ -47,25 +50,32 @@ end
 
 local A = { 107,36,0,255 }
 local B = { 255,146,0,255 }
-local X ={ 0,0,0,0 }
-function setPal1 () shader:sendColor( "palette", A, A, A, A, B, B, B, B, X) end
-function setPal2 () shader:sendColor( "palette", B, A, A, A, A, B, B, B, X) end
-function setPal3 () shader:sendColor( "palette", B, B, A, A, A, A, B, B, X) end
-function setPal4 () shader:sendColor( "palette", B, B, B, A, A, A, A, B, X) end
-function setPal5 () shader:sendColor( "palette", B, B, B, B, A, A, A, A, X) end
-function setPal6 () shader:sendColor( "palette", A, B, B, B, B, A, A, A, X) end
-function setPal7 () shader:sendColor( "palette", A, A, B, B, B, B, A, A, X) end
-function setPal8 () shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
+local X = { 0,0,0,0 }
+function P(idx)
+  local i = math.floor(idx) % 9
+  if     (i <  2) then shader:sendColor( "palette", A, A, A, A, B, B, B, B, X)
+  elseif (i == 2) then shader:sendColor( "palette", B, A, A, A, A, B, B, B, X)
+  elseif (i == 3) then shader:sendColor( "palette", B, B, A, A, A, A, B, B, X)
+  elseif (i == 4) then shader:sendColor( "palette", B, B, B, A, A, A, A, B, X)
+  elseif (i == 5) then shader:sendColor( "palette", B, B, B, B, A, A, A, A, X)
+  elseif (i == 6) then shader:sendColor( "palette", A, B, B, B, B, A, A, A, X)
+  elseif (i == 7) then shader:sendColor( "palette", A, A, B, B, B, B, A, A, X)
+  elseif (i == 8) then shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
+end
 
 local i = 0
 local turning = false
 local alternate = false
 function love.update(dt)
   if (dt > 0.4) then return end
-  i = i + (dt * 10)
-  if (i > 8) then
-    i = i - 8
-    if (turning) then alternate = not alternate end
+  local tstep = dt * 10
+  local limit = 8
+  if (turning) then tstep = tstep * 2; limit = 7 end
+
+  i = i + tstep
+  if (i > limit) then
+    i = i - limit
+    if (not turning) then alternate = not alternate end
     turning = not turning
   end
 end
@@ -79,28 +89,28 @@ function love.draw()
   -- Draw ball background
   love.graphics.setShader( shader )
   -- Move forward animation
-  if turning then
+  if not turning then
     if (i - math.floor(i)) < 0.5 then
       mesh:setTexture( texture1 )
     else
       mesh:setTexture( texture2 )
     end
     if (i < 1) then
-      if alternate then setPal1() else setPal5() end
+      if alternate then P(1) else P(5) end
     elseif (i < 2) then
-      if alternate then setPal2() else setPal6() end
+      if alternate then P(2) else P(6) end
     elseif (i < 3) then
-      if alternate then setPal3() else setPal7() end
+      if alternate then P(3) else P(7) end
     elseif (i < 4) then
-      if alternate then setPal4() else setPal8() end
+      if alternate then P(4) else P(8) end
     elseif (i < 5) then
-      if alternate then setPal5() else setPal1() end
+      if alternate then P(5) else P(1) end
     elseif (i < 6) then
-      if alternate then setPal6() else setPal2() end
+      if alternate then P(6) else P(2) end
     elseif (i < 7) then
-      if alternate then setPal7() else setPal3() end
+      if alternate then P(7) else P(3) end
     elseif (i < 8) then
-      if alternate then setPal8() else setPal4() end
+      if alternate then P(8) else P(4) end
     end
     love.graphics.draw(mesh)
 
@@ -108,7 +118,7 @@ function love.draw()
 
     -- rotate animation
     local drawMesh = mesh
-    if alternate then setPal5() else setPal1() end
+    if alternate then P(5) else P(1) end
     if (i < 1) then
       drawMesh:setTexture(rot1)
     elseif (i < 2) then
@@ -128,13 +138,30 @@ function love.draw()
       drawMesh:setTexture(rot1)
     elseif (i < 8) then
       drawMesh = mesh
-      if alternate then setPal1() else setPal5() end
+      if alternate then P(1) else P(5) end
       drawMesh:setTexture(texture1)
     end
     love.graphics.draw(drawMesh)
   end
 
-  love.graphics.setShader( )
-  love.graphics.setColor(0,0,0, 255)
-  love.graphics.print( "index: "..math.floor(i), 10, 10)
+  love.graphics.setShader()
+  love.graphics.setColor(255,255,255, 255)
+
+  leftStr( "<00"..math.floor(i)..">", 10, 10, 2)
+  rightStr( "[00"..math.floor(i).."]", screenWidth - 10, 10, 2)
+  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
+end
+
+function leftStr(str, x, y, scale)
+  love.graphics.print(str, math.floor(x), math.floor(y), 0, scale)
+end
+function rightStr(str, x, y, scale)
+  scale = scale or 1
+  local w = scale * font:getWidth(str)
+  love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
+end
+function centreStr(str, x, y, scale)
+  scale = scale or 1
+  local w = scale * font:getWidth(str) / 2
+  love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
 end
