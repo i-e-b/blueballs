@@ -1,11 +1,19 @@
 local screenWidth, screenHeight
 local font
 
+-- our place in the world:
+local worldPos = {rot = 0,  -- out of 28
+                  drot = 0, -- rotate direction
+                  dx = 0,   -- vector version of our rotation
+                  dy = 0,
+                  x = 0,    -- absolute position. each tile is 4 steps
+                  y = 0}
+
 function love.load()
   love.window.fullscreen = (love.system.getOS() == "Android")
   screenWidth, screenHeight = love.graphics.getDimensions( )
 
-  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() ")
+  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .")
   font:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
@@ -63,92 +71,80 @@ function P(idx)
   elseif (i == 8) then shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
 end
 
-local i = 0
-local turning = false
-local alternate = false
 function love.update(dt)
   if (dt > 0.4) then return end
   local tstep = dt * 10
   local limit = 8
-  if (turning) then tstep = tstep * 2; limit = 7 end
 
-  i = i + tstep
-  if (i > limit) then
-    i = i - limit
-    if (not turning) then alternate = not alternate end
-    turning = not turning
+  worldPos.y = worldPos.y + tstep
+  if (worldPos.y > limit) then -- TODO: change this to wrap the level limits
+    worldPos.y = worldPos.y - limit
   end
 end
 
 function love.draw()
-  -- Draw sky
+  drawSky()
+
+  if (worldPos.drot ~= 0) then
+    drawRotation()
+  else
+    drawNormal()
+  end
+
+  drawUI()
+end
+
+function drawNormal()
+  local phase = 1 + (((worldPos.x + worldPos.y)) % 8)
+
+  love.graphics.setShader( shader )
+  P(phase)
+  if (phase - math.floor(phase)) < 0.5 then
+    mesh:setTexture( texture1 )
+  else
+    mesh:setTexture( texture2 )
+  end
+  love.graphics.draw(mesh)
+end
+
+function drawRotation()
+  -- we must be on a tile boundary, or things will look wrong
+  local phase = (worldPos.x + worldPos.y) % 2 == 0
+  if phase then P(1) else P(5) end
+
+  local drawMesh = flipmesh
+  if (i < 5) then drawMesh = mesh end
+  if (i < 1) then
+    drawMesh:setTexture(rot1)
+  elseif (i < 2) then
+    drawMesh:setTexture(rot2)
+  elseif (i < 3) then
+    drawMesh:setTexture(rot3)
+  elseif (i < 4) then
+    drawMesh:setTexture(rot4)
+  elseif (i < 5) then
+    drawMesh:setTexture(rot3)
+  elseif (i < 6) then
+    drawMesh:setTexture(rot2)
+  elseif (i < 7) then
+    drawMesh:setTexture(rot1)
+  end
+  love.graphics.setShader( shader )
+  love.graphics.draw(drawMesh)
+end
+
+function drawSky()
   love.graphics.setShader( )
   love.graphics.setColor(120,120,255, 255)
   love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
+end
 
-  -- Draw ball background
-  love.graphics.setShader( shader )
-  -- Move forward animation
-  if not turning then
-    if (i - math.floor(i)) < 0.5 then
-      mesh:setTexture( texture1 )
-    else
-      mesh:setTexture( texture2 )
-    end
-    if (i < 1) then
-      if alternate then P(1) else P(5) end
-    elseif (i < 2) then
-      if alternate then P(2) else P(6) end
-    elseif (i < 3) then
-      if alternate then P(3) else P(7) end
-    elseif (i < 4) then
-      if alternate then P(4) else P(8) end
-    elseif (i < 5) then
-      if alternate then P(5) else P(1) end
-    elseif (i < 6) then
-      if alternate then P(6) else P(2) end
-    elseif (i < 7) then
-      if alternate then P(7) else P(3) end
-    elseif (i < 8) then
-      if alternate then P(8) else P(4) end
-    end
-    love.graphics.draw(mesh)
-
-  else
-
-    -- rotate animation
-    local drawMesh = mesh
-    if alternate then P(5) else P(1) end
-    if (i < 1) then
-      drawMesh:setTexture(rot1)
-    elseif (i < 2) then
-      drawMesh:setTexture(rot2)
-    elseif (i < 3) then
-      drawMesh:setTexture(rot3)
-    elseif (i < 4) then
-      drawMesh:setTexture(rot4)
-    elseif (i < 5) then
-      drawMesh = flipmesh
-      drawMesh:setTexture(rot3)
-    elseif (i < 6) then
-      drawMesh = flipmesh
-      drawMesh:setTexture(rot2)
-    elseif (i < 7) then
-      drawMesh = flipmesh
-      drawMesh:setTexture(rot1)
-    elseif (i < 8) then
-      drawMesh = mesh
-      if alternate then P(1) else P(5) end
-      drawMesh:setTexture(texture1)
-    end
-    love.graphics.draw(drawMesh)
-  end
-
+function drawUI()
   love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
 
-  leftStr( "<00"..math.floor(i)..">", 10, 10, 2)
-  rightStr( "[00"..math.floor(i).."]", screenWidth - 10, 10, 2)
+  leftStr( "<"..math.floor(worldPos.x)..">", 10, 10, 2)
+  rightStr( "["..math.floor(worldPos.y).."]", screenWidth - 10, 10, 2)
   centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
 end
 
