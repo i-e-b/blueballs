@@ -2,11 +2,11 @@ local screenWidth, screenHeight
 local font
 
 -- our place in the world:
-local worldPos = {rot = 0,  -- out of 28
+local worldPos = {rot = 1,  -- out of 32
                   drot = 0, -- rotate direction
                   srot = 0, --    and steps remaining
-                  dx = 0,   -- vector version of our rotation
-                  dy = 0,
+                  dx = 0,   -- walking direction
+                  dy = 1,
                   x = 0,    -- absolute position. each tile is 4 steps
                   y = 0}
 
@@ -14,7 +14,7 @@ function love.load()
   love.window.fullscreen = (love.system.getOS() == "Android")
   screenWidth, screenHeight = love.graphics.getDimensions( )
 
-  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .")
+  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
   font:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
@@ -74,7 +74,7 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
-  local tstep = dt * 7
+  local tstep = dt * 17
   local limit = 8
 
   -- try turning
@@ -82,26 +82,40 @@ function love.update(dt)
   if (worldPos.srot > 0) then canTurn = false end
   if (canTurn) and (love.keyboard.isDown("left")) then
     worldPos.drot = -1
-    worldPos.srot = 7
+    worldPos.srot = 8
+    rotLeft()
   elseif (canTurn) and (love.keyboard.isDown("right")) then
     worldPos.drot = 1
-    worldPos.srot = 7
+    worldPos.srot = 8
+    rotRight()
   end
 
   -- TODO: jump and switch forward
 
   -- do position updates
+  worldPos.srot = math.max(0, worldPos.srot - (tstep))
   if (worldPos.srot > 0) then
     worldPos.rot = worldPos.rot + (worldPos.drot * tstep)
-    worldPos.srot = worldPos.srot - (tstep)
-    if (worldPos.rot > 28) then worldPos.rot = worldPos.rot - 28 end
-    if (worldPos.rot < 1) then worldPos.rot = worldPos.rot + 28 end
+    if (worldPos.rot > 31) then worldPos.rot = worldPos.rot - 32 end
+    if (worldPos.rot < 0) then worldPos.rot = worldPos.rot + 32 end
   else
-    worldPos.y = worldPos.y + tstep
-    if (worldPos.y > limit) then -- TODO: change this to wrap the level limits
-      worldPos.y = worldPos.y - limit
-    end
+    worldPos.rot = math.floor(worldPos.rot+0.499);
+    worldPos.y = worldPos.y + (tstep * worldPos.dy)
+    worldPos.x = worldPos.x + (tstep * worldPos.dx)
   end
+end
+
+function rotLeft()
+  local ddx = -worldPos.dy
+  local ddy = worldPos.dx
+  worldPos.dx = ddx
+  worldPos.dy = ddy
+end
+function rotRight()
+  local ddx = worldPos.dy
+  local ddy = -worldPos.dx
+  worldPos.dx = ddx
+  worldPos.dy = ddy
 end
 
 function love.draw()
@@ -117,8 +131,10 @@ function love.draw()
 end
 
 function idxPhase()
-  local rp = math.floor((7 - worldPos.rot) * 0.571)
-  return 1 + (((worldPos.x + worldPos.y + rp)) % 8)
+  -- todo: rotation quadrant: if neg dxy, must still do phase forward
+  local q = 0
+  if (worldPos.rot % 16 < 8) then q = 4 end
+  return 1 + (((worldPos.x + worldPos.y + q)) % 8)
 end
 
 function drawNormal()
@@ -135,15 +151,29 @@ function drawNormal()
 end
 
 function drawRotation()
-  -- we must be on a tile boundary, or things will look wrong
-  if idxPhase() > 5 then P(1) else P(5) end
+  local i = (worldPos.rot % 8)
 
-  local i = 7 - worldPos.srot
+  -- we must be on a tile boundary, or things will look wrong
+  local pA = 1
+  local pB = 5
+
+  if (worldPos.rot % 16 < 8) then
+    pA = 5
+    pB = 1
+  end
+
+  if ((worldPos.x + worldPos.y) % 8 <= 4) then
+    P(pA)
+  else
+    P(pB)
+  end
 
   local drawMesh = flipmesh
-  if (i > 4) then drawMesh = mesh end
+  if (i < 4) then drawMesh = mesh end
+
   if (i < 1) then
-    drawMesh:setTexture(rot1)
+    drawMesh:setTexture(texture1)
+    --drawMesh:setTexture(rot1)
   elseif (i < 2) then
     drawMesh:setTexture(rot2)
   elseif (i < 3) then
@@ -156,6 +186,8 @@ function drawRotation()
     drawMesh:setTexture(rot2)
   elseif (i < 7) then
     drawMesh:setTexture(rot1)
+  else
+    drawMesh:setTexture(texture1)
   end
   love.graphics.setShader( shader )
   love.graphics.draw(drawMesh)
@@ -171,11 +203,12 @@ function drawUI()
   love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
 
-  leftStr( "rot <"..(math.floor(worldPos.rot))..">", 10, 10, 1)
-  rightStr( "srot ["..(math.floor(worldPos.srot)).."]", screenWidth - 10, 10, 1)
-  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
+  leftStr( "rot <"..((worldPos.rot))..">", 10, 10, 1)
+  rightStr( "x y ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
+  rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 30, 1)
+--  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
 
-  leftStr("phase "..(idxPhase()), 10, 40, 1)
+--  leftStr("phase "..(idxPhase()), 10, 40, 1)
 end
 
 function leftStr(str, x, y, scale)
