@@ -2,13 +2,17 @@ local screenWidth, screenHeight
 local font
 
 -- our place in the world:
-local worldPos = {rot = 0,  -- out of 32
-                  drot = 0, -- rotate direction
-                  srot = 0, --    and steps remaining
-                  dx = 0,   -- walking direction
+local worldPos = {rot = 0,       -- out of 4
+                  drot = 0,      -- rotate direction
+                  animSteps = 0, -- steps remaining
+                  dx = 0,        -- walking direction
                   dy = 1,
-                  x = 0,    -- absolute position. each tile is 4 steps
-                  y = 0}
+                  x = 0,         -- absolute position
+                  y = 0,
+                  isTurning = false,
+                  canTurn = false,
+                  speed = 7      -- goes up as level progresses
+                }
 
 function love.load()
   love.window.fullscreen = (love.system.getOS() == "Android")
@@ -74,46 +78,65 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
-  local tstep = dt * 7
-  local limit = 8
+  local tstep = dt * worldPos.speed
 
-  -- try turning
-  local canTurn = (math.floor(worldPos.x) + math.floor(worldPos.y)) % 4 == 0
-  if (worldPos.srot > 0) then canTurn = false end
-  if (canTurn) and (love.keyboard.isDown("left")) then
-    worldPos.drot = -1
-    worldPos.srot = 1
-  elseif (canTurn) and (love.keyboard.isDown("right")) then
-    worldPos.drot = 1
-    worldPos.srot = 1
+  -- controls
+  if (love.keyboard.isDown("up")) then
+    worldPos.speed = worldPos.speed + (dt * 3)
+  elseif (love.keyboard.isDown("down")) then
+    worldPos.speed = worldPos.speed - (dt * 3)
+  end
+  if (worldPos.animSteps <= 0) then
+    if (worldPos.canTurn) and (love.keyboard.isDown("left")) then
+      worldPos.drot = -1
+      worldPos.isTurning = true
+      worldPos.canTurn = false
+      worldPos.animSteps = 4
+    elseif (worldPos.canTurn) and (love.keyboard.isDown("right")) then
+      worldPos.drot = 1
+      worldPos.isTurning = true
+      worldPos.canTurn = false
+      worldPos.animSteps = 4
+    else -- start moving forward, unlock turn
+      worldPos.animSteps = 4
+      worldPos.canTurn = true
+    end
   end
 
   -- TODO: jump and switch forward
 
   -- do position updates
-  worldPos.srot = math.max(0, worldPos.srot - (tstep))
-  if (worldPos.srot > 0) then
-    worldPos.rot = worldPos.rot + (worldPos.drot * tstep)
-    if (worldPos.rot > 31) then worldPos.rot = worldPos.rot - 32 end
-    if (worldPos.rot < 0) then worldPos.rot = worldPos.rot + 32 end
-    rotToDxDy()
-  elseif (love.keyboard.isDown("up")) then
-    worldPos.rot = math.floor(worldPos.rot) --+0.499)
-    rotToDxDy()
-    worldPos.y = worldPos.y + (tstep * worldPos.dy)
-    worldPos.x = worldPos.x + (tstep * worldPos.dx)
+  worldPos.animSteps = math.max(0, worldPos.animSteps - (tstep))
+
+  if (worldPos.animSteps <= 0) then
+    worldPos.animSteps = 0
+    worldPos.isTurning = false
+    worldPos.y = math.floor(worldPos.y + 0.4999)
+    worldPos.x = math.floor(worldPos.x + 0.4999)
+    worldPos.rot = math.floor(worldPos.rot + 0.4999)
+  end
+
+  if (worldPos.rot >= 4) then worldPos.rot = worldPos.rot - 4 end
+  if (worldPos.rot < 0) then worldPos.rot = worldPos.rot + 4 end
+  rotToDxDy()
+
+  if (worldPos.isTurning) then
+    worldPos.rot = worldPos.rot + (worldPos.drot * tstep / 4)
+  elseif (worldPos.animSteps > 0) then
+    worldPos.y = worldPos.y + (tstep * worldPos.dy / 4)
+    worldPos.x = worldPos.x + (tstep * worldPos.dx / 4)
   end
 end
 
 function rotToDxDy()
-  local qrot = worldPos.rot -- 4  -- shifted an eighth turn
-  if (qrot < 8) then
+  local qrot = math.floor(worldPos.rot)
+  if (qrot == 0) then
     worldPos.dx = 0
     worldPos.dy = 1
-  elseif (qrot < 16) then
+  elseif (qrot == 1) then
     worldPos.dx = 1
     worldPos.dy = 0
-  elseif (qrot < 24) then
+  elseif (qrot == 2) then
     worldPos.dx = 0
     worldPos.dy = -1
   else
@@ -122,28 +145,32 @@ function rotToDxDy()
   end
 end
 
+function idxPhase()
+  local rph = math.floor(worldPos.rot) % 2
+  local xph = (worldPos.x) % 2
+  local yph = (worldPos.y) % 2
+  local corePhase = (rph + xph + yph) % 2
+
+  return corePhase * 4
+end
+
 function love.draw()
   drawSky()
 
-  if (math.floor(worldPos.rot) % 8 == 0) then
-    drawNormal()
-  else
+  if (worldPos.isTurning) then
     drawRotation()
+  else
+    drawNormal()
   end
 
   drawUI()
 end
 
-function idxPhase()
-  local rph = (math.floor(worldPos.rot / 8) % 2) * 4
-  local xph = (worldPos.x * worldPos.dx) % 8
-  local yph = (worldPos.y * worldPos.dy) % 8
-
-  return (rph + xph + yph) % 8
-end
-
 function drawNormal()
   local phase = idxPhase()
+  if (worldPos.dx + worldPos.dy) < 0 then
+    phase = 8 - phase
+  end
 
   love.graphics.setShader( shader )
   P(phase + 1)
@@ -156,11 +183,7 @@ function drawNormal()
 end
 
 function drawRotation()
-  local i = (worldPos.rot % 8)
-
-  -- we must be on a tile boundary, or things will look wrong
-  local pA = 5
-  local pB = 1
+  local i = (worldPos.rot * 8) % 8
 
   if (idxPhase() < 4) then
     P(1)
@@ -202,14 +225,14 @@ function drawUI()
   love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
 
-  leftStr( "rot <"..((worldPos.rot))..">", 10, 10, 1)
-  leftStr( "phz <"..(idxPhase())..">", 10, 30, 1)
+  leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
+  leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
 
   rightStr( "x y ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
   rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 30, 1)
---  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
-
---  leftStr("phase "..(idxPhase()), 10, 40, 1)
+  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
+  centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
+  centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
 end
 
 function leftStr(str, x, y, scale)
