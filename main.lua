@@ -1,8 +1,8 @@
 local screenWidth, screenHeight
 local font
 
--- our place in the world:
-local worldPos = {rot = 0,       -- out of 4
+local worldPos = { -- world state
+                  rot = 0,       -- out of 4
                   drot = 0,      -- rotate direction
                   animSteps = 0, -- steps remaining
                   dx = 0,        -- walking direction
@@ -75,6 +75,7 @@ function P(idx)
   elseif (i == 7) then shader:sendColor( "palette", A, A, B, B, B, B, A, A, X)
   elseif (i == 8) then shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
 end
+
 
 function love.update(dt)
   if (dt > 0.1) then return end
@@ -225,11 +226,20 @@ function drawUI()
   love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
 
+  local r = screenWidth
+  local h = (2 * screenHeight) / 3
+  local t = screenHeight / 3
+  local x, y = love.mouse.getPosition()
+  x = x / r
+  y = math.max(0, (y - t) / h)
+
   leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
   leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
 
-  rightStr( "x y ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
-  rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 30, 1)
+  rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
+  rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
+  rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
+
   centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
   centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
   centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
