@@ -1,6 +1,7 @@
-local screenWidth, screenHeight
+local screenWidth, screenHeight, meshHeight, meshTop
 local font
 
+local posTable = require "posTable"
 local worldPos = { -- world state
                   rot = 0,       -- out of 4
                   drot = 0,      -- rotate direction
@@ -17,6 +18,8 @@ local worldPos = { -- world state
 function love.load()
   love.window.fullscreen = (love.system.getOS() == "Android")
   screenWidth, screenHeight = love.graphics.getDimensions( )
+  meshTop = screenHeight / 3
+  meshHeight = meshTop * 2
 
   font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
   font:setFilter("linear", "nearest")
@@ -34,7 +37,7 @@ function love.load()
 
   local r = screenWidth
   local h = screenHeight
-  local t = screenHeight / 3
+  local t = meshTop
   mesh = love.graphics.newMesh( {
     { 0,t,  0,0 }, { r,h,  1,1 }, { 0,h,  0,1 }, -- triangle #1 uses first color (0)
     { r,h,  1,1 }, { r,t,  1,0 }, { 0,t,  0,0 }      -- triangle #2 uses second color (1)
@@ -181,6 +184,22 @@ function drawNormal()
     mesh:setTexture( texture2 )
   end
   love.graphics.draw(mesh)
+
+
+    love.graphics.setShader()
+    love.graphics.setColor(0,0,255, 255)
+  local xf = screenWidth / 320
+  local yf = meshHeight / 192
+  local pidx = math.floor(phase % 4) + 1
+  for i=1,#(posTable.mov[pidx]) do -- table of offsets
+    local pos = posTable.mov[pidx][i]
+    local px = math.floor(worldPos.x) + pos[1]
+    local py = math.floor(worldPos.y) + pos[2]
+    local sx = pos[3] * xf
+    local sy = meshTop + (pos[4] * yf)
+
+    centreStr( px.."."..py, sx, sy, 0.5)
+  end
 end
 
 function drawRotation()
