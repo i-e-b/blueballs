@@ -17,6 +17,7 @@ return {
   },
 
   mov = { -- eight movement steps
+  -- TODO: rearrange these into Z order (front to back)
 { --[1] {dx, dy, texture x, texture y}, where dx,dy is measured from griid coords
 {0,0,160,146},{0,1,160, 76},{0,2,160, 38},{0,3,160, 16},{0,4,160,  6},{0,5,160,  1},
 {1,0, 57,148},{1,1, 80, 79},{1,2, 96, 40},{1,3,106, 19},{1,4,115,  8},{1,5,121,  3},

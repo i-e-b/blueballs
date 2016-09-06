@@ -186,8 +186,8 @@ function drawNormal()
   love.graphics.draw(mesh)
 
 
-    love.graphics.setShader()
-    love.graphics.setColor(0,0,255, 255)
+  love.graphics.setShader()
+  love.graphics.setColor(100,100,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
   local pidx = math.floor(phase % 4) + 1
@@ -197,8 +197,9 @@ function drawNormal()
     local py = math.floor(worldPos.y) + pos[2]
     local sx = pos[3] * xf
     local sy = meshTop + (pos[4] * yf)
+    local scale = 3 / (1 + pos[1] + pos[2])
 
-    centreStr( px.."."..py, sx, sy, 0.5)
+    centreStr( "<"..px.."."..py.."]", sx, sy, scale)
   end
 end
 
