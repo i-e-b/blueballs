@@ -3,8 +3,8 @@ local font
 
 local posTable = require "posTable"
 local worldPos = { -- world state
-                  rot = 0,       -- out of 4
-                  drot = 0,      -- rotate direction
+                  rot = 0,       -- out of 4 (0 to 3)
+                  drot = 0,      -- rotate direction (-1 or 1)
                   animSteps = 0, -- steps remaining
                   dx = 0,        -- walking direction
                   dy = 1,
@@ -191,13 +191,33 @@ function drawNormal()
   local xf = screenWidth / 320
   local yf = meshHeight / 192
   local pidx = math.floor(phase % 4) + 1
+  local dpx = 0
+  local dpy = 0
   for i=1,#(posTable.mov[pidx]) do -- table of offsets
     local pos = posTable.mov[pidx][i]
-    local px = math.floor(worldPos.x) + pos[1]
-    local py = math.floor(worldPos.y) + pos[2]
+
+    -- rotate the offsets to match the world
+    if (worldPos.rot < 1) then     -- x, +y
+      dpx = -pos[1]
+      dpy = pos[2]
+    elseif (worldPos.rot < 2) then -- +x, y
+      dpx = pos[2]
+      dpy = pos[1]
+    elseif (worldPos.rot < 3) then -- x, -y
+      dpx = pos[1]
+      dpy = -pos[2]
+    else                           -- -x, y
+      dpx = -pos[2]
+      dpy = -pos[1]
+    end
+
+    -- TODO: interpolate the 50 positions
+    -- calculate positions
+    local px = math.floor(worldPos.x) + dpx
+    local py = math.floor(worldPos.y) + dpy
     local sx = pos[3] * xf
-    local sy = meshTop + (pos[4] * yf)
-    local scale = 3 / (1 + pos[1] + pos[2])
+    local sy = meshTop + (pos[4] * yf) - 10
+    local scale = 3 / (1 + math.abs(pos[1]) + math.abs(pos[2]))
 
     centreStr( "<"..px.."."..py.."]", sx, sy, scale)
   end
