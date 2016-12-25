@@ -220,6 +220,11 @@ function drawNormal()
     local scale = 3 / (1 + math.abs(pos[1]) + math.abs(pos[2]))
 
     centreStr( "<"..px.."."..py.."]", sx, sy, scale)
+
+
+    -- sx = (160 + (160 - pos[3])) * xf
+    -- px = math.floor(worldPos.x) - dpx
+    -- centreStr( "<"..px.."."..py.."]", sx, sy, scale)
   end
 end
 
