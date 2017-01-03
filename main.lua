@@ -186,45 +186,51 @@ function drawNormal()
   love.graphics.draw(mesh)
 
 
+-- dots
   love.graphics.setShader()
   love.graphics.setColor(100,100,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
   local pidx = math.floor(phase % 4) + 1
-  local dpx = 0
-  local dpy = 0
+  centreStr( "<"..pidx.."]", 140, 10, 1)
   for i=1,#(posTable.mov[pidx]) do -- table of offsets
     local pos = posTable.mov[pidx][i]
-
-    -- rotate the offsets to match the world
-    if (worldPos.rot < 1) then     -- x, +y
-      dpx = -pos[1]
-      dpy = pos[2]
-    elseif (worldPos.rot < 2) then -- +x, y
-      dpx = pos[2]
-      dpy = pos[1]
-    elseif (worldPos.rot < 3) then -- x, -y
-      dpx = pos[1]
-      dpy = -pos[2]
-    else                           -- -x, y
-      dpx = -pos[2]
-      dpy = -pos[1]
+    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf)
+    if (pos[1] ~= 0) then -- flipped
+      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf)
     end
+  end -- end of dots
+end
 
-    -- TODO: interpolate the 50 positions
-    -- calculate positions
-    local px = math.floor(worldPos.x) + dpx
-    local py = math.floor(worldPos.y) + dpy
-    local sx = pos[3] * xf
-    local sy = meshTop + (pos[4] * yf) - 10
-    local scale = 3 / (1 + math.abs(pos[1]) + math.abs(pos[2]))
+function drawDotPosition(dx, dy, tx, ty, xf, yf)
+  local dpx = 0
+  local dpy = 0
+  -- rotate the offsets to match the world
+  if (worldPos.rot < 1) then     -- x, +y
+    dpx = -dx
+    dpy = dy
+  elseif (worldPos.rot < 2) then -- +x, y
+    dpx = dy
+    dpy = dx
+  elseif (worldPos.rot < 3) then -- x, -y
+    dpx = dx
+    dpy = -dy
+  else                           -- -x, y
+    dpx = -dy
+    dpy = -dx
+  end
 
+  -- TODO: interpolate the 50 positions
+  -- calculate positions
+  local px = math.floor(worldPos.x) + dpx
+  local py = math.floor(worldPos.y) + dpy
+
+  local sx = tx * xf
+  local sy = meshTop + (ty * yf) - 10
+  local scale = 3 / (1 + math.abs(dx) + math.abs(dy))
+
+  if ((px + py) % 4 == 0) then
     centreStr( "<"..px.."."..py.."]", sx, sy, scale)
-
-
-    -- sx = (160 + (160 - pos[3])) * xf
-    -- px = math.floor(worldPos.x) - dpx
-    -- centreStr( "<"..px.."."..py.."]", sx, sy, scale)
   end
 end
 
