@@ -83,6 +83,17 @@ end
 function love.update(dt)
   if (dt > 0.1) then return end
   local tstep = dt * worldPos.speed
+  local qstep = tstep / 4
+
+  -- do position updates
+  worldPos.animSteps = math.max(0, worldPos.animSteps - (tstep))
+
+  if (worldPos.animSteps <= 0) then
+    worldPos.isTurning = false
+    worldPos.y = math.floor(worldPos.y + 0.4999)
+    worldPos.x = math.floor(worldPos.x + 0.4999)
+    worldPos.rot = math.floor(worldPos.rot + 0.4999)
+  end
 
   -- controls
   if (love.keyboard.isDown("up")) then
@@ -95,7 +106,7 @@ function love.update(dt)
       worldPos.drot = -1
       worldPos.isTurning = true
       worldPos.canTurn = false
-      worldPos.animSteps = 4
+      worldPos.animSteps = 3.5
     elseif (worldPos.canTurn) and (love.keyboard.isDown("right")) then
       worldPos.drot = 1
       worldPos.isTurning = true
@@ -109,26 +120,15 @@ function love.update(dt)
 
   -- TODO: jump and switch forward
 
-  -- do position updates
-  worldPos.animSteps = math.max(0, worldPos.animSteps - (tstep))
-
-  if (worldPos.animSteps <= 0) then
-    worldPos.animSteps = 0
-    worldPos.isTurning = false
-    worldPos.y = math.floor(worldPos.y + 0.4999)
-    worldPos.x = math.floor(worldPos.x + 0.4999)
-    worldPos.rot = math.floor(worldPos.rot + 0.4999)
-  end
-
   if (worldPos.rot >= 4) then worldPos.rot = worldPos.rot - 4 end
   if (worldPos.rot < 0) then worldPos.rot = worldPos.rot + 4 end
   rotToDxDy()
 
   if (worldPos.isTurning) then
-    worldPos.rot = worldPos.rot + (worldPos.drot * tstep / 4)
+    worldPos.rot = worldPos.rot + (worldPos.drot * qstep)
   elseif (worldPos.animSteps > 0) then
-    worldPos.y = worldPos.y + (tstep * worldPos.dy / 4)
-    worldPos.x = worldPos.x + (tstep * worldPos.dx / 4)
+    worldPos.y = worldPos.y + (qstep * worldPos.dy)
+    worldPos.x = worldPos.x + (qstep * worldPos.dx)
   end
 end
 
@@ -188,15 +188,15 @@ function drawNormal()
 
 -- dots
   love.graphics.setShader()
-  love.graphics.setColor(100,100,255, 255)
+  love.graphics.setColor(140,140,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
-  local pidx = math.floor(phase % 4) + 1
-  centreStr( "<"..pidx.."]", 140, 10, 1)
+  local pidx = math.floor((phase % 4) + 1)
+
   for i=1,#(posTable.mov[pidx]) do -- table of offsets
     local pos = posTable.mov[pidx][i]
     drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf)
-    if (pos[1] ~= 0) then -- flipped
+    if (pos[1] ~= 0) then -- flipped on y axis
       drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf)
     end
   end -- end of dots
@@ -214,22 +214,21 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf)
     dpy = dx
   elseif (worldPos.rot < 3) then -- x, -y
     dpx = dx
-    dpy = -dy
+    dpy = 1 - dy
   else                           -- -x, y
-    dpx = -dy
+    dpx = 1 - dy
     dpy = -dx
   end
 
-  -- TODO: interpolate the 50 positions
   -- calculate positions
-  local px = math.floor(worldPos.x) + dpx
-  local py = math.floor(worldPos.y) + dpy
+  local px = math.floor(worldPos.x + dpx)
+  local py = math.floor(worldPos.y + dpy)
 
   local sx = tx * xf
   local sy = meshTop + (ty * yf) - 10
   local scale = 3 / (1 + math.abs(dx) + math.abs(dy))
 
-  if ((px + py) % 4 == 0) then
+  if (px % 2 == 0) and (py % 2 == 0) then
     centreStr( "<"..px.."."..py.."]", sx, sy, scale)
   end
 end
