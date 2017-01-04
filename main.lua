@@ -1,5 +1,5 @@
 local screenWidth, screenHeight, meshHeight, meshTop
-local font
+local font, stars
 
 local posTable = require "posTable"
 local worldPos = { -- world state
@@ -22,7 +22,9 @@ function love.load()
   meshHeight = meshTop * 2
 
   font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
+  stars = love.graphics.newImageFont("star_font.png", "0123456789ABCDEF")
   font:setFilter("linear", "nearest")
+  stars:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
   -- background is last color index
@@ -78,7 +80,6 @@ function P(idx)
   elseif (i == 7) then shader:sendColor( "palette", A, A, B, B, B, B, A, A, X)
   elseif (i == 8) then shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
 end
-
 
 function love.update(dt)
   if (dt > 0.1) then return end
@@ -176,6 +177,7 @@ function drawNormal()
     phase = 8 - phase
   end
 
+  -- checker ball floor
   love.graphics.setShader( shader )
   P(phase + 1)
   if (phase - math.floor(phase)) < 0.5 then
@@ -185,26 +187,27 @@ function drawNormal()
   end
   love.graphics.draw(mesh)
 
-
--- dots
+  -- dots
   love.graphics.setShader()
-  love.graphics.setColor(140,140,255, 255)
+  love.graphics.setColor(255,255,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
   local pidx = math.floor((phase % 4) + 1)
 
   for i=1,#(posTable.mov[pidx]) do -- table of offsets
     local pos = posTable.mov[pidx][i]
-    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf)
+    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
     if (pos[1] ~= 0) then -- flipped on y axis
-      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf)
+      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf, pos[5])
     end
   end -- end of dots
+  love.graphics.setFont(font)
 end
 
-function drawDotPosition(dx, dy, tx, ty, xf, yf)
+function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local dpx = 0
   local dpy = 0
+
   -- rotate the offsets to match the world
   if (worldPos.rot < 1) then     -- x, +y
     dpx = -dx
@@ -225,12 +228,12 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf)
   local py = math.floor(worldPos.y + dpy)
 
   local sx = tx * xf
-  local sy = meshTop + (ty * yf) - 10
-  local scale = 3 / (1 + math.abs(dx) + math.abs(dy))
+  local sy = meshTop + (ty * yf) - 32
 
-  if (px % 2 == 0) and (py % 2 == 0) then
-    centreStr( "<"..px.."."..py.."]", sx, sy, scale)
-  end
+  --if (px % 2 == 0) and (py % 2 == 0) then
+    love.graphics.setFont(stars)
+    centreStr(size, sx, sy, 2)
+  --end
 end
 
 function drawRotation()
