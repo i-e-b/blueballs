@@ -22,7 +22,7 @@ function love.load()
   meshHeight = meshTop * 2
 
   font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
-  stars = love.graphics.newImageFont("star_font.png", "0123456789ABCDEF")
+  stars = love.graphics.newImageFont("star_font.png", "0123456789ABCDEx")
   font:setFilter("linear", "nearest")
   stars:setFilter("linear", "nearest")
   love.graphics.setFont(font)
@@ -95,6 +95,33 @@ function love.update(dt)
     worldPos.x = math.floor(worldPos.x + 0.4999)
     worldPos.rot = math.floor(worldPos.rot + 0.4999)
   end
+
+-- Test phases... TODO: remove
+if (love.keyboard.isDown("1")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+end
+if (love.keyboard.isDown("2")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0.25
+end
+if (love.keyboard.isDown("3")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0.5
+end
+if (love.keyboard.isDown("4")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0.75
+end
+-- End test phases
 
   -- controls
   if (love.keyboard.isDown("up")) then
@@ -194,6 +221,8 @@ function drawNormal()
   local yf = meshHeight / 192
   local pidx = math.floor((phase % 4) + 1)
 
+  leftStr("<"..pidx.."]", 10, 170, 2)
+
   for i=1,#(posTable.mov[pidx]) do -- table of offsets
     local pos = posTable.mov[pidx][i]
     drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
@@ -232,7 +261,7 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
 
   --if (px % 2 == 0) and (py % 2 == 0) then
     love.graphics.setFont(stars)
-    centreStr(size, sx, sy, 2)
+    centreFontStr(size, sx, sy, 2, stars)
   --end
 end
 
@@ -308,6 +337,12 @@ function rightStr(str, x, y, scale)
 end
 function centreStr(str, x, y, scale)
   scale = scale or 1
-  local w = scale * font:getWidth(str) / 2
+  local w = scale * (font:getWidth(str) / 2)
+  love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
+end
+
+function centreFontStr(str, x, y, scale, fnt)
+  scale = scale or 1
+  local w = scale * fnt:getWidth(str) / 2
   love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
 end
