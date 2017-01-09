@@ -223,7 +223,7 @@ function drawNormal()
 
   leftStr("<"..pidx.."]", 10, 170, 2)
 
-  for i=1,#(posTable.mov[pidx]) do -- table of offsets
+  for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
     local pos = posTable.mov[pidx][i]
     drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
     if (pos[1] ~= 0) then -- flipped on y axis
