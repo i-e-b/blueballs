@@ -1,5 +1,5 @@
 local screenWidth, screenHeight, meshHeight, meshTop
-local font, stars
+local font, stars, red, blue, gold
 
 local posTable = require "posTable"
 local worldPos = { -- world state
@@ -23,8 +23,14 @@ function love.load()
 
   font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
   stars = love.graphics.newImageFont("star_font.png", "0123456789ABCDEx")
+  red = love.graphics.newImageFont("red_font.png", "0123456789ABCDEx")
+  blue = love.graphics.newImageFont("blue_font.png", "0123456789ABCDEx")
+  gold = love.graphics.newImageFont("gold_font.png", "0123456789ABCDEx")
   font:setFilter("linear", "nearest")
   stars:setFilter("linear", "nearest")
+  red:setFilter("linear", "nearest")
+  blue:setFilter("linear", "nearest")
+  gold:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
   -- background is last color index
@@ -213,9 +219,9 @@ function drawNormal()
     mesh:setTexture( texture2 )
   end
   love.graphics.draw(mesh)
+  love.graphics.setShader()
 
   -- dots
-  love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
@@ -260,8 +266,8 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local sy = meshTop + (ty * yf) - 32
 
   --if (px % 2 == 0) and (py % 2 == 0) then
-    love.graphics.setFont(stars)
-    centreFontStr(size, sx, sy, 2, stars)
+    love.graphics.setFont(gold)
+    centreFontStr(size, sx, sy, 2, gold)
   --end
 end
 
@@ -277,6 +283,7 @@ function drawRotation()
   local drawMesh = flipmesh
   if (i < 4) then drawMesh = mesh end
 
+  -- checker board
   if (i < 1) then
     drawMesh:setTexture(texture1)
   elseif (i < 2) then
@@ -296,6 +303,25 @@ function drawRotation()
   end
   love.graphics.setShader( shader )
   love.graphics.draw(drawMesh)
+  love.graphics.setShader()
+
+  -- dots
+  love.graphics.setColor(255,255,255, 255)
+  local xf = screenWidth / 320
+  local yf = meshHeight / 192
+  local pidx = math.floor(i)
+
+  leftStr("<"..pidx.."]", 10, 170, 2)
+  --[[
+  for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
+    local pos = posTable.mov[pidx][i]
+    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
+    if (pos[1] ~= 0) then -- flipped on y axis
+      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf, pos[5])
+    end
+  end -- end of dots
+  love.graphics.setFont(font)
+  ]]
 end
 
 function drawSky()
