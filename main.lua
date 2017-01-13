@@ -266,7 +266,7 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local sy = meshTop + (ty * yf) - 32
 
   --if (px % 2 == 0) and (py % 2 == 0) then
-    love.graphics.setFont(gold)
+    love.graphics.setFont(stars)
     centreFontStr(size, sx, sy, 2, gold)
   --end
 end
@@ -282,23 +282,32 @@ function drawRotation()
 
   local drawMesh = flipmesh
   if (i < 4) then drawMesh = mesh end
+  local pidx = 1
 
   -- checker board
   if (i < 1) then
+    pidx = 0 -- not rotated
     drawMesh:setTexture(texture1)
   elseif (i < 2) then
+    pidx = 1
     drawMesh:setTexture(rot1)
   elseif (i < 3) then
+    pidx = 3
     drawMesh:setTexture(rot2)
   elseif (i < 4) then
+    pidx = 4
     drawMesh:setTexture(rot3)
   elseif (i < 5) then
+    pidx = 5
     drawMesh:setTexture(rot4)
   elseif (i < 6) then
+    pidx = 6
     drawMesh:setTexture(rot3)
   elseif (i < 7) then
+    pidx = 7
     drawMesh:setTexture(rot2)
   else
+    pidx = 8
     drawMesh:setTexture(rot1)
   end
   love.graphics.setShader( shader )
@@ -309,19 +318,17 @@ function drawRotation()
   love.graphics.setColor(255,255,255, 255)
   local xf = screenWidth / 320
   local yf = meshHeight / 192
-  local pidx = math.floor(i)
 
   leftStr("<"..pidx.."]", 10, 170, 2)
-  --[[
-  for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
-    local pos = posTable.mov[pidx][i]
-    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
-    if (pos[1] ~= 0) then -- flipped on y axis
-      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf, pos[5])
-    end
-  end -- end of dots
+
+  if (pidx > 0) then
+    for i=#(posTable.rot[pidx]),1,-1 do -- table of offsets (going backward for z order)
+      local pos = posTable.rot[pidx][i]
+      drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
+    end -- end of dots
+  end
   love.graphics.setFont(font)
-  ]]
+
 end
 
 function drawSky()
