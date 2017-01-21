@@ -195,7 +195,9 @@ end
 function love.draw()
   drawSky()
 
-  if (worldPos.isTurning) then
+  local i = (worldPos.rot * 8) % 8
+
+  if (worldPos.isTurning and i >= 1) then
     drawRotation()
   else
     drawNormal()
@@ -281,33 +283,30 @@ function drawRotation()
   end
 
   local drawMesh = flipmesh
-  if (i < 4) then drawMesh = mesh end
+  if (i < 5) then drawMesh = mesh end
   local pidx = 1
 
   -- checker board
-  if (i < 1) then
-    pidx = 0 -- not rotated
-    drawMesh:setTexture(texture1)
-  elseif (i < 2) then
+  if (i < 2) then
     pidx = 1
     drawMesh:setTexture(rot1)
   elseif (i < 3) then
-    pidx = 3
+    pidx = 2
     drawMesh:setTexture(rot2)
   elseif (i < 4) then
-    pidx = 4
+    pidx = 3
     drawMesh:setTexture(rot3)
   elseif (i < 5) then
-    pidx = 5
+    pidx = 4
     drawMesh:setTexture(rot4)
   elseif (i < 6) then
-    pidx = 6
+    pidx = 5
     drawMesh:setTexture(rot3)
   elseif (i < 7) then
-    pidx = 7
+    pidx = 6
     drawMesh:setTexture(rot2)
   else
-    pidx = 8
+    pidx = 7
     drawMesh:setTexture(rot1)
   end
   love.graphics.setShader( shader )
