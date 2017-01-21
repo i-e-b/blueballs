@@ -103,29 +103,77 @@ function love.update(dt)
   end
 
 -- Test phases... TODO: remove
-if (love.keyboard.isDown("1")) then
+if (love.keyboard.isDown("q")) then
   worldPos.speed = 0
   worldPos.animSteps = 0
   worldPos.x = 0
   worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 0
 end
-if (love.keyboard.isDown("2")) then
+if (love.keyboard.isDown("w")) then
   worldPos.speed = 0
   worldPos.animSteps = 0
   worldPos.x = 0
-  worldPos.y = 0.25
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 1 / 8
 end
-if (love.keyboard.isDown("3")) then
+if (love.keyboard.isDown("e")) then
   worldPos.speed = 0
   worldPos.animSteps = 0
   worldPos.x = 0
-  worldPos.y = 0.5
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 2 / 8
 end
-if (love.keyboard.isDown("4")) then
+if (love.keyboard.isDown("r")) then
   worldPos.speed = 0
   worldPos.animSteps = 0
   worldPos.x = 0
-  worldPos.y = 0.75
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 3 / 8
+end
+if (love.keyboard.isDown("t")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 4 / 8
+end
+if (love.keyboard.isDown("y")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 5 / 8
+end
+if (love.keyboard.isDown("u")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 6 / 8
+end
+if (love.keyboard.isDown("i")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 7 / 8
+end
+if (love.keyboard.isDown("o")) then
+  worldPos.speed = 0
+  worldPos.animSteps = 0
+  worldPos.x = 0
+  worldPos.y = 0
+  worldPos.isTurning = true
+  worldPos.rot = 1
 end
 -- End test phases
 
@@ -269,8 +317,12 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
 
   --if (px % 2 == 0) and (py % 2 == 0) then
     love.graphics.setFont(stars)
-    centreFontStr(size, sx, sy, 2, gold)
+    centreFontStr(size, sx, sy, 2, stars)
   --end
+
+
+          love.graphics.setFont(font)
+          leftStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
 end
 
 function drawRotation()
@@ -323,11 +375,11 @@ function drawRotation()
   if (pidx > 0) then
     for i=#(posTable.rot[pidx]),1,-1 do -- table of offsets (going backward for z order)
       local pos = posTable.rot[pidx][i]
+
       drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
     end -- end of dots
   end
   love.graphics.setFont(font)
-
 end
 
 function drawSky()
@@ -354,9 +406,9 @@ function drawUI()
   rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
   rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
 
-  centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
-  centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
-  centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
+  --centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
+  --centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
+  --centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
 end
 
 function leftStr(str, x, y, scale)
