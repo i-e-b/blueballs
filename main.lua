@@ -1,7 +1,7 @@
 local screenWidth, screenHeight, meshHeight, meshTop
 local font, stars, red, blue, gold
 
-local debug = true
+local debug = false
 
 local posTable = require "posTable"
 local worldPos = { -- world state
@@ -104,82 +104,9 @@ function love.update(dt)
     worldPos.rot = math.floor(worldPos.rot + 0.4999)
   end
 
--- Test phases... TODO: remove
-if (love.keyboard.isDown("z")) then debug = true end
-if (love.keyboard.isDown("x")) then debug = false end
-if (love.keyboard.isDown("q")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 0
-end
-if (love.keyboard.isDown("w")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 1 / 8
-end
-if (love.keyboard.isDown("e")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 2 / 8
-end
-if (love.keyboard.isDown("r")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 3 / 8
-end
-if (love.keyboard.isDown("t")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 4 / 8
-end
-if (love.keyboard.isDown("y")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 5 / 8
-end
-if (love.keyboard.isDown("u")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 6 / 8
-end
-if (love.keyboard.isDown("i")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 7 / 8
-end
-if (love.keyboard.isDown("o")) then
-  worldPos.speed = 0
-  worldPos.animSteps = 0
-  worldPos.x = 0
-  worldPos.y = 0
-  worldPos.isTurning = true
-  worldPos.rot = 1
-end
--- End test phases
+  -- debug switches
+  if (love.keyboard.isDown("z")) then debug = true end
+  if (love.keyboard.isDown("x")) then debug = false end
 
   -- controls
   if (love.keyboard.isDown("up")) then
@@ -192,12 +119,14 @@ end
       worldPos.drot = -1
       worldPos.isTurning = true
       worldPos.canTurn = false
-      worldPos.animSteps = 3.5
+      worldPos.animSteps = 3
+      worldPos.rot = worldPos.rot - 0.125
     elseif (worldPos.canTurn) and (love.keyboard.isDown("right")) then
       worldPos.drot = 1
       worldPos.isTurning = true
       worldPos.canTurn = false
-      worldPos.animSteps = 4
+      worldPos.animSteps = 3
+      worldPos.rot = worldPos.rot + 0.125
     else -- start moving forward, unlock turn
       worldPos.animSteps = 4
       worldPos.canTurn = true
@@ -206,9 +135,10 @@ end
 
   -- TODO: jump and switch forward
 
-  if (worldPos.rot >= 4) then worldPos.rot = worldPos.rot - 4 end
-  if (worldPos.rot < 0) then worldPos.rot = worldPos.rot + 4 end
+  if (worldPos.rot >= 4) then worldPos.rot = 0 end
+  if (worldPos.rot < 0) then worldPos.rot = 4 end
   rotToDxDy()
+
 
   if (worldPos.isTurning) then
     worldPos.rot = worldPos.rot + (worldPos.drot * qstep)
@@ -249,7 +179,7 @@ function love.draw()
 
   local i = (worldPos.rot * 8) % 8
 
-  if (worldPos.isTurning and i >= 1) then
+  if (worldPos.isTurning) then
     drawRotation()
   else
     drawNormal()
@@ -281,7 +211,7 @@ function drawNormal()
   local yf = meshHeight / 192
   local pidx = math.floor((phase % 4) + 1)
 
-  leftStr("<"..pidx.."]", 10, 170, 2)
+  if debug then leftStr("<"..pidx.."]", 10, 170, 2) end
 
   for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
     local pos = posTable.mov[pidx][i]
@@ -321,10 +251,10 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local sx = tx * xf
   local sy = meshTop + (ty * yf) - 32
 
-  --if (px % 2 == 0) and (py % 2 == 0) then
+  if (px % 3 == 0) or (py % 3 == 0) then
     love.graphics.setFont(stars)
     centreFontStr(size, sx, sy, 2, stars)
-  --end
+  end
 
   if debug then
     love.graphics.setFont(font)
@@ -383,21 +313,20 @@ function drawRotation()
   local xf = screenWidth / 320
   local yf = meshHeight / 192
 
-  leftStr("<"..pidx.."]", 10, 170, 2)
+  if debug then leftStr("<"..pidx.."]", 10, 170, 2) end
 
   -- adjust the rotation offsets
   -- TODO: for two of the quadrants, there is a brief flash of wrong position.
-  local ddx = 0
-  if (worldPos.dx < 0) then ddx = 1 end
   local ddy = 0
-  if (worldPos.dy < 0) then ddy = 1 end
+  if (worldPos.rot > 2) then
+    ddy = 1
+  end
 
   if (pidx > 0) then
     for i=#(posTable.rot[pidx]),1,-1 do -- table of offsets (going backward for z order)
       local pos = posTable.rot[pidx][i]
-
       -- dx, dy, tx, ty, xf, yf, size
-      drawDotPosition(pos[1] + ddx, pos[2] + ddy, pos[3], pos[4], xf, yf, pos[5])
+      drawDotPosition(pos[1], pos[2] + ddy, pos[3], pos[4], xf, yf, pos[5])
     end -- end of dots
   end
   love.graphics.setFont(font)
@@ -420,16 +349,18 @@ function drawUI()
   x = x / r
   y = math.max(0, (y - t) / h)
 
-  leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
-  leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
+  if debug then
+    leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
+    leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
 
-  rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
-  rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
-  rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
-
-  --centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
-  --centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
-  --centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
+    rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
+    rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
+    rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
+  else
+    centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
+    centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
+    centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
+  end
 end
 
 function leftStr(str, x, y, scale)
