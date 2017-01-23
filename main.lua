@@ -1,6 +1,8 @@
 local screenWidth, screenHeight, meshHeight, meshTop
 local font, stars, red, blue, gold
 
+local debug = true
+
 local posTable = require "posTable"
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
@@ -103,6 +105,8 @@ function love.update(dt)
   end
 
 -- Test phases... TODO: remove
+if (love.keyboard.isDown("z")) then debug = true end
+if (love.keyboard.isDown("x")) then debug = false end
 if (love.keyboard.isDown("q")) then
   worldPos.speed = 0
   worldPos.animSteps = 0
@@ -281,8 +285,10 @@ function drawNormal()
 
   for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
     local pos = posTable.mov[pidx][i]
+    -- dx, dy, tx, ty, xf, yf, size
     drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
     if (pos[1] ~= 0) then -- flipped on y axis
+      -- dx, dy, tx, ty, xf, yf, size
       drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf, pos[5])
     end
   end -- end of dots
@@ -320,9 +326,16 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
     centreFontStr(size, sx, sy, 2, stars)
   --end
 
-
-          love.graphics.setFont(font)
-          leftStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
+  if debug then
+    love.graphics.setFont(font)
+    if (sx > 240) then -- use dx,dy for size tables; px,py for layout corrections
+      --rightStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
+      rightStr(px.."."..py, sx, sy, 1)
+    else
+      --leftStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
+      leftStr(px.."."..py, sx, sy, 1)
+    end
+  end
 end
 
 function drawRotation()
@@ -372,11 +385,19 @@ function drawRotation()
 
   leftStr("<"..pidx.."]", 10, 170, 2)
 
+  -- adjust the rotation offsets
+  -- TODO: for two of the quadrants, there is a brief flash of wrong position.
+  local ddx = 0
+  if (worldPos.dx < 0) then ddx = 1 end
+  local ddy = 0
+  if (worldPos.dy < 0) then ddy = 1 end
+
   if (pidx > 0) then
     for i=#(posTable.rot[pidx]),1,-1 do -- table of offsets (going backward for z order)
       local pos = posTable.rot[pidx][i]
 
-      drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
+      -- dx, dy, tx, ty, xf, yf, size
+      drawDotPosition(pos[1] + ddx, pos[2] + ddy, pos[3], pos[4], xf, yf, pos[5])
     end -- end of dots
   end
   love.graphics.setFont(font)
