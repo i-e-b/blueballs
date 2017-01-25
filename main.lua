@@ -4,6 +4,7 @@ local font, stars, red, blue, gold
 local debug = false
 
 local posTable = require "posTable"
+local levels = require "levels"
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
                   drot = 0,      -- rotate direction (-1 or 1)
@@ -76,7 +77,7 @@ end
 
 local A = { 107,36,0,255 }
 local B = { 255,146,0,255 }
-local X = { 0,0,0,0 }
+local X = { 0,0,0,0 } -- transparent color
 function P(idx)
   local i = math.floor(idx) % 9
   if     (i <  2) then shader:sendColor( "palette", A, A, A, A, B, B, B, B, X)
@@ -119,13 +120,13 @@ function love.update(dt)
       worldPos.drot = -1
       worldPos.isTurning = true
       worldPos.canTurn = false
-      worldPos.animSteps = 3
+      worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot - 0.125
     elseif (worldPos.canTurn) and (love.keyboard.isDown("right")) then
       worldPos.drot = 1
       worldPos.isTurning = true
       worldPos.canTurn = false
-      worldPos.animSteps = 3
+      worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot + 0.125
     else -- start moving forward, unlock turn
       worldPos.animSteps = 4
@@ -225,7 +226,23 @@ function drawNormal()
   love.graphics.setFont(font)
 end
 
-function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
+function setBallFont(type)
+  -- Red:x, Blue:#, Gold:G, Star:*, Ring:0, Blank:" "
+  -- Sonic: S
+  if type == "x" then
+    love.graphics.setFont(red)
+  elseif type == "#" then
+    love.graphics.setFont(blue)
+  elseif type == "G" then
+    love.graphics.setFont(gold)
+  elseif type == "*" then
+    love.graphics.setFont(stars)
+  elseif type == "0" then
+    --love.graphics.setFont(Red)
+  end
+end
+
+function dotType(dx,dy)
   local dpx = 0
   local dpy = 0
 
@@ -248,23 +265,20 @@ function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local px = math.floor(worldPos.x + dpx)
   local py = math.floor(worldPos.y + dpy)
 
+  local levelX = (px % 32) + 1 -- TODO: variable level size
+  local levelY = (py % 32) + 1 -- TODO: variable level size
+
+  return levels[1][levelY]:sub(levelX, levelX)
+end
+
+function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
   local sx = tx * xf
   local sy = meshTop + (ty * yf) - 32
 
-  if (px % 3 == 0) or (py % 3 == 0) then
-    love.graphics.setFont(stars)
+  local type = dotType(dx,dy)
+  if (type ~= " ") then
+    setBallFont(type)
     centreFontStr(size, sx, sy, 2, stars)
-  end
-
-  if debug then
-    love.graphics.setFont(font)
-    if (sx > 240) then -- use dx,dy for size tables; px,py for layout corrections
-      --rightStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
-      rightStr(px.."."..py, sx, sy, 1)
-    else
-      --leftStr(dx.."."..dy.."."..(size:lower()), sx, sy, 1)
-      leftStr(px.."."..py, sx, sy, 1)
-    end
   end
 end
 
