@@ -6,7 +6,11 @@ local debug = false
 local posTable = require "posTable"
 local levels = require "levels"
 local currentLevel = {}
-local playerFrame = 0
+local frame = { -- frame and transition info
+  player = 0, -- player animation frame
+  prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
+  prevY = 0
+}
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
                   drot = 0,      -- rotate direction (-1 or 1)
@@ -88,6 +92,13 @@ function loadLevel(idx)
     local rowStr = levels[idx][row]
     table.insert(currentLevel, {})
     for col = 1, rowStr:len() do
+      local code = rowStr:sub(col,col)
+      if code == "s" then
+        code = " "
+        worldPos.x = col
+        worldPos.y = row
+        -- TODO: read and set dx,dy
+      end
       currentLevel[row][col] = rowStr:sub(col,col)
     end
   end
@@ -110,7 +121,7 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
-  playerFrame = playerFrame + (dt * worldPos.speed * 2)
+  frame.player = frame.player + (dt * worldPos.speed * 2)
   local tstep = dt * worldPos.speed
   local qstep = tstep / 4
 
@@ -159,12 +170,38 @@ function love.update(dt)
   if (worldPos.rot < 0) then worldPos.rot = 4 end
   rotToDxDy()
 
-
   if (worldPos.isTurning) then
     worldPos.rot = worldPos.rot + (worldPos.drot * qstep)
   elseif (worldPos.animSteps > 0) then
     worldPos.y = worldPos.y + (qstep * worldPos.dy)
     worldPos.x = worldPos.x + (qstep * worldPos.dx)
+  end
+
+  -- trigger ball touch transitions
+  local touchX,touchY = offsetToAbsolute(0,0.35)
+  if (frame.prevX ~= touchX) or (frame.prevY ~= touchY) then
+    transitionTrigger(touchX, touchY)
+    frame.prevX = touchX
+    frame.prevY = touchY
+  end
+end
+
+function transitionTrigger()
+  local type = dotType(0,0.35)
+  local nx, ny = offsetToAbsolute(0,0.35)
+  if type == "x" then -- impact! FAIL!
+    -- TODO: handle failure
+  elseif type == "#" then -- blue dot, flip to red
+    -- TODO: score, countdown, check for looping, etc
+    currentLevel[ny][nx] = "x" -- 1-based vs 0-based issues
+  elseif type == "g" then
+    -- TODO: launch for 5 positions
+  elseif type == "*" then
+    -- TODO: proper bounce
+    worldPos.speed = -worldPos.speed
+    worldPos.animSteps = 0
+  elseif type == "0" then
+    -- TODO: pick up ring
   end
 end
 
@@ -210,8 +247,8 @@ end
 
 function drawTails()
   love.graphics.setFont(player)
-  local b = math.floor(playerFrame % 12) + 1
-  local t = math.floor(playerFrame % 7) + 1
+  local b = math.floor(frame.player % 12) + 1
+  local t = math.floor(frame.player % 7) + 1
   leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
   leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174, 2)
 end
@@ -260,7 +297,7 @@ function setBallFont(type)
     love.graphics.setFont(red)
   elseif type == "#" then
     love.graphics.setFont(blue)
-  elseif type == "G" then
+  elseif type == "g" then
     love.graphics.setFont(gold)
   elseif type == "*" then
     love.graphics.setFont(stars)
@@ -269,7 +306,7 @@ function setBallFont(type)
   end
 end
 
-function dotType(dx,dy)
+function offsetToAbsolute(dx,dy)
   local dpx = 0
   local dpy = 0
 
@@ -295,6 +332,11 @@ function dotType(dx,dy)
   local levelX = (px % 32) + 1 -- TODO: variable level size
   local levelY = (py % 32) + 1 -- TODO: variable level size
 
+  return levelX, levelY
+end
+
+function dotType(dx,dy)
+  local levelX, levelY = offsetToAbsolute(dx,dy)
   return currentLevel[levelY][levelX]
 end
 
@@ -391,8 +433,6 @@ function drawUI()
   x = x / r
   y = math.max(0, (y - t) / h)
 
-  leftStr(dotType(0,0.4), 10, 50, 2)
-
   if debug then
     leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
     leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
@@ -400,6 +440,8 @@ function drawUI()
     rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
+
+    leftStr("type <"..dotType(0,0.35).."]", 10, 50, 1)
   else
     centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
     centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
