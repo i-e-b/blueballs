@@ -1,10 +1,12 @@
 local screenWidth, screenHeight, meshHeight, meshTop
-local font, stars, red, blue, gold
+local font, stars, red, blue, gold, player
 
 local debug = false
 
 local posTable = require "posTable"
 local levels = require "levels"
+local currentLevel = {}
+local playerFrame = 0
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
                   drot = 0,      -- rotate direction (-1 or 1)
@@ -24,16 +26,18 @@ function love.load()
   meshTop = screenHeight / 3
   meshHeight = meshTop * 2
 
-  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-")
+  font = love.graphics.newImageFont("font.png", "0123456789<>[]abcdefghijklmnopqrstuvwxyz() .-#*?_")
   stars = love.graphics.newImageFont("star_font.png", "0123456789ABCDEx")
   red = love.graphics.newImageFont("red_font.png", "0123456789ABCDEx")
   blue = love.graphics.newImageFont("blue_font.png", "0123456789ABCDEx")
   gold = love.graphics.newImageFont("gold_font.png", "0123456789ABCDEx")
+  player = love.graphics.newImageFont("player_font.png", "ABCDEFGHIJK0123456")
   font:setFilter("linear", "nearest")
   stars:setFilter("linear", "nearest")
   red:setFilter("linear", "nearest")
   blue:setFilter("linear", "nearest")
   gold:setFilter("linear", "nearest")
+  player:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
   -- background is last color index
@@ -73,10 +77,24 @@ function love.load()
   rot2:setFilter("nearest", "nearest")
   rot3:setFilter("nearest", "nearest")
   rot4:setFilter("nearest", "nearest")
+
+  loadLevel(1)
 end
 
-local A = { 107,36,0,255 }
-local B = { 255,146,0,255 }
+function loadLevel(idx)
+  currentLevel = {}
+
+  for row = 1, #levels[idx] do
+    local rowStr = levels[idx][row]
+    table.insert(currentLevel, {})
+    for col = 1, rowStr:len() do
+      currentLevel[row][col] = rowStr:sub(col,col)
+    end
+  end
+end
+
+local A = { 33,109,0,255 }
+local B = { 0, 255, 181,255 }
 local X = { 0,0,0,0 } -- transparent color
 function P(idx)
   local i = math.floor(idx) % 9
@@ -92,6 +110,7 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
+  playerFrame = playerFrame + (dt * worldPos.speed * 2)
   local tstep = dt * worldPos.speed
   local qstep = tstep / 4
 
@@ -178,15 +197,23 @@ end
 function love.draw()
   drawSky()
 
-  local i = (worldPos.rot * 8) % 8
-
   if (worldPos.isTurning) then
     drawRotation()
   else
     drawNormal()
   end
 
+  drawTails()
+
   drawUI()
+end
+
+function drawTails()
+  love.graphics.setFont(player)
+  local b = math.floor(playerFrame % 12) + 1
+  local t = math.floor(playerFrame % 7) + 1
+  leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
+  leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174, 2)
 end
 
 function drawNormal()
@@ -268,7 +295,7 @@ function dotType(dx,dy)
   local levelX = (px % 32) + 1 -- TODO: variable level size
   local levelY = (py % 32) + 1 -- TODO: variable level size
 
-  return levels[1][levelY]:sub(levelX, levelX)
+  return currentLevel[levelY][levelX]
 end
 
 function drawDotPosition(dx, dy, tx, ty, xf, yf, size)
@@ -353,6 +380,7 @@ function drawSky()
 end
 
 function drawUI()
+  love.graphics.setFont(font)
   love.graphics.setShader()
   love.graphics.setColor(255,255,255, 255)
 
@@ -363,6 +391,8 @@ function drawUI()
   x = x / r
   y = math.max(0, (y - t) / h)
 
+  leftStr(dotType(0,0.4), 10, 50, 2)
+
   if debug then
     leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
     leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
@@ -371,9 +401,9 @@ function drawUI()
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
   else
-    centreStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2)
-    centreStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1)
-    centreStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1)
+    centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
+    centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
+    centreFontStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1, font)
   end
 end
 
@@ -385,12 +415,6 @@ function rightStr(str, x, y, scale)
   local w = scale * font:getWidth(str)
   love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
 end
-function centreStr(str, x, y, scale)
-  scale = scale or 1
-  local w = scale * (font:getWidth(str) / 2)
-  love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
-end
-
 function centreFontStr(str, x, y, scale, fnt)
   scale = scale or 1
   local w = scale * fnt:getWidth(str) / 2

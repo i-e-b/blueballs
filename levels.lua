@@ -1,11 +1,11 @@
 return {
-  -- Red:x, Blue:#, Gold:G, Star:*, Ring:0, Blank:" "
-  -- Sonic: S
+  -- Red:x, Blue:#, Gold:g, Star:*, Ring:0, Blank:" "
+  -- Sonic: s
   -- Standard levels are 32x32
   { -- Level [1]
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-"xxS            **             xx",
+"xxs            **             xx",
 "xx             **             xx",
 "xx  ####                ####  xx",
 "xx  ####  ##   **   ##  ####  xx",
