@@ -9,7 +9,9 @@ local currentLevel = {}
 local frame = { -- frame and transition info
   player = 0, -- player animation frame
   prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
-  prevY = 0
+  prevY = 0,
+  touchLead = 0.35, -- leading edge for touching next position
+  headingForward = true -- if true, we try to match the calculated forwards speed. Else we just coast at current speed.
 }
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
@@ -21,7 +23,7 @@ local worldPos = { -- world state
                   y = 0,
                   isTurning = false,
                   canTurn = false,
-                  speed = 7      -- goes up as level progresses
+                  speed = 0      -- actual current speed. Can be negative when going backwards
                 }
 
 function love.load()
@@ -95,11 +97,11 @@ function loadLevel(idx)
       local code = rowStr:sub(col,col)
       if code == "s" then
         code = " "
-        worldPos.x = col
-        worldPos.y = row
-        -- TODO: read and set dx,dy
+        worldPos.x = col - 1
+        worldPos.y = row - 1
+        -- TODO: store, read and set dx,dy
       end
-      currentLevel[row][col] = rowStr:sub(col,col)
+      currentLevel[row][col] = code
     end
   end
 end
@@ -139,12 +141,16 @@ function love.update(dt)
   if (love.keyboard.isDown("z")) then debug = true end
   if (love.keyboard.isDown("x")) then debug = false end
 
-  -- controls
+  --[[ controls
   if (love.keyboard.isDown("up")) then
     worldPos.speed = worldPos.speed + (dt * 3)
   elseif (love.keyboard.isDown("down")) then
     worldPos.speed = worldPos.speed - (dt * 3)
-  end
+  end]]
+
+  if (love.keyboard.isDown("up")) then frame.headingForward = true end
+
+  if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
   if (worldPos.animSteps <= 0) then
     if (worldPos.canTurn) and (love.keyboard.isDown("left")) then
       worldPos.drot = -1
@@ -164,7 +170,13 @@ function love.update(dt)
     end
   end
 
-  -- TODO: jump and switch forward
+  -- switch forward
+  if frame.headingForward then
+    local ds = math.min(dt * 10, targetSpeed() - worldPos.speed)
+    worldPos.speed = worldPos.speed + ds
+  end
+
+  -- TODO: jump
 
   if (worldPos.rot >= 4) then worldPos.rot = 0 end
   if (worldPos.rot < 0) then worldPos.rot = 4 end
@@ -178,17 +190,26 @@ function love.update(dt)
   end
 
   -- trigger ball touch transitions
-  local touchX,touchY = offsetToAbsolute(0,0.35)
+  local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
+  setTouchLead()
   if (frame.prevX ~= touchX) or (frame.prevY ~= touchY) then
-    transitionTrigger(touchX, touchY)
+    transitionTrigger()
     frame.prevX = touchX
     frame.prevY = touchY
   end
 end
 
+function targetSpeed()
+  return 7 -- TODO: calculate based on difficulty and progress through the level
+end
+
+function setTouchLead() -- 0.35
+  if (worldPos.speed > 0) then frame.touchLead = 0.35 else frame.touchLead = 0.75 end
+end
+
 function transitionTrigger()
-  local type = dotType(0,0.35)
-  local nx, ny = offsetToAbsolute(0,0.35)
+  local type = dotType(0, frame.touchLead)
+  local nx, ny = offsetToAbsolute(0, frame.touchLead)
   if type == "x" then -- impact! FAIL!
     -- TODO: handle failure
   elseif type == "#" then -- blue dot, flip to red
@@ -198,8 +219,13 @@ function transitionTrigger()
     -- TODO: launch for 5 positions
   elseif type == "*" then
     -- TODO: proper bounce
-    worldPos.speed = -worldPos.speed
-    worldPos.animSteps = 0
+    worldPos.speed = - worldPos.speed
+    local tx, ty = offsetToAbsolute(0, -0.7)
+    frame.prevX = tx
+    frame.prevY = ty
+    setTouchLead()
+    if worldPos.speed < 0 then frame.headingForward = false else frame.headingForward = true end
+
   elseif type == "0" then
     -- TODO: pick up ring
   end
@@ -436,12 +462,13 @@ function drawUI()
   if debug then
     leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
     leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
+    leftStr( "stp <"..(math.floor(worldPos.animSteps))..">", 10, 50, 1)
 
     rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
 
-    leftStr("type <"..dotType(0,0.35).."]", 10, 50, 1)
+    leftStr("type <"..dotType(0,0.35).."]", 10, 70, 1)
   else
     centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
     centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
