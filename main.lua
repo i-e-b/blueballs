@@ -5,6 +5,7 @@ local debug = false
 
 local posTable = require "posTable"
 local levels = require "levels"
+local levelTime = 0
 local currentLevel = {}
 local frame = { -- frame and transition info
   player = 0, -- player animation frame
@@ -21,6 +22,7 @@ local worldPos = { -- world state
                   dy = 1,
                   x = 0,         -- absolute position
                   y = 0,
+                  jump = 0,      -- steps of jump left
                   isTurning = false,
                   canTurn = false,
                   speed = 0      -- actual current speed. Can be negative when going backwards
@@ -89,6 +91,7 @@ end
 
 function loadLevel(idx)
   currentLevel = {}
+  levelTime = 0
 
   for row = 1, #levels[idx] do
     local rowStr = levels[idx][row]
@@ -123,6 +126,7 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
+  levelTime = levelTime + dt
   frame.player = frame.player + (dt * worldPos.speed * 2)
   local tstep = dt * worldPos.speed
   local qstep = tstep / 4
@@ -141,24 +145,15 @@ function love.update(dt)
   if (love.keyboard.isDown("z")) then debug = true end
   if (love.keyboard.isDown("x")) then debug = false end
 
-  --[[ controls
-  if (love.keyboard.isDown("up")) then
-    worldPos.speed = worldPos.speed + (dt * 3)
-  elseif (love.keyboard.isDown("down")) then
-    worldPos.speed = worldPos.speed - (dt * 3)
-  end]]
-
-  if (love.keyboard.isDown("up")) then frame.headingForward = true end
-
   if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
   if (worldPos.animSteps <= 0) then
-    if (worldPos.canTurn) and (love.keyboard.isDown("left")) then
+    if (worldPos.canTurn) and (worldPos.jump < 0.3) and (love.keyboard.isDown("left")) then
       worldPos.drot = -1
       worldPos.isTurning = true
       worldPos.canTurn = false
       worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot - 0.125
-    elseif (worldPos.canTurn) and (love.keyboard.isDown("right")) then
+    elseif (worldPos.canTurn) and (worldPos.jump < 0.3) and (love.keyboard.isDown("right")) then
       worldPos.drot = 1
       worldPos.isTurning = true
       worldPos.canTurn = false
@@ -171,12 +166,11 @@ function love.update(dt)
   end
 
   -- switch forward
+  if (love.keyboard.isDown("up")) then frame.headingForward = true end
   if frame.headingForward then
     local ds = math.min(dt * 10, targetSpeed() - worldPos.speed)
     worldPos.speed = worldPos.speed + ds
   end
-
-  -- TODO: jump
 
   if (worldPos.rot >= 4) then worldPos.rot = 0 end
   if (worldPos.rot < 0) then worldPos.rot = 4 end
@@ -188,14 +182,23 @@ function love.update(dt)
     worldPos.y = worldPos.y + (qstep * worldPos.dy)
     worldPos.x = worldPos.x + (qstep * worldPos.dx)
   end
+  if (worldPos.jump > 0) then
+    worldPos.jump = worldPos.jump - (qstep / 2)
+  end
 
   -- trigger ball touch transitions
   local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
   setTouchLead()
-  if (frame.prevX ~= touchX) or (frame.prevY ~= touchY) then
+  if (worldPos.jump <= 0) and ((frame.prevX ~= touchX) or (frame.prevY ~= touchY)) then
     transitionTrigger()
     frame.prevX = touchX
     frame.prevY = touchY
+  end
+
+  -- jump. We do this after triggers so you can't bunny hop over everything
+  if (love.keyboard.isDown("space")) and (worldPos.jump <= 0) and (worldPos.speed > 0) and (not worldPos.isTurning) then
+    worldPos.jump = 1
+    worldPos.canTurn = false
   end
 end
 
@@ -203,7 +206,7 @@ function targetSpeed()
   return 7 -- TODO: calculate based on difficulty and progress through the level
 end
 
-function setTouchLead() -- 0.35
+function setTouchLead()
   if (worldPos.speed > 0) then frame.touchLead = 0.35 else frame.touchLead = 0.75 end
 end
 
@@ -220,6 +223,7 @@ function transitionTrigger()
   elseif type == "*" then
     -- TODO: proper bounce
     worldPos.speed = - worldPos.speed
+    worldPos.jump = 0
     local tx, ty = offsetToAbsolute(0, -0.7)
     frame.prevX = tx
     frame.prevY = ty
@@ -273,10 +277,25 @@ end
 
 function drawTails()
   love.graphics.setFont(player)
-  local b = math.floor(frame.player % 12) + 1
-  local t = math.floor(frame.player % 7) + 1
-  leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
-  leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174, 2)
+
+  -- shadow
+  -- TODO: shadow should go between ground and balls.
+  leftStr("H", (screenWidth/2) - 22, screenHeight - 182, 2)
+  local height = 0
+
+  -- body
+  if (worldPos.jump > 0) then
+    height = math.sin(worldPos.jump * math.pi) * 40
+    local b = math.floor(worldPos.jump * 2) + 1
+    leftStr(("KJI"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182 - height, 2)
+  else
+    local b = math.floor(frame.player % 12) + 1
+    leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
+  end
+
+  -- the tail
+  local t = math.floor((levelTime * 10) % 7) + 1
+  leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174 - height, 2)
 end
 
 function drawNormal()
@@ -462,13 +481,10 @@ function drawUI()
   if debug then
     leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
     leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
-    leftStr( "stp <"..(math.floor(worldPos.animSteps))..">", 10, 50, 1)
 
     rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
-
-    leftStr("type <"..dotType(0,0.35).."]", 10, 70, 1)
   else
     centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
     centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
