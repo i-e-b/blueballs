@@ -6,6 +6,7 @@ local debug = false
 local posTable = require "posTable"
 local levels = require "levels"
 local levelTime = 0
+local blueBallRemain = 0
 local currentLevel = {}
 local frame = { -- frame and transition info
   player = 0, -- player animation frame
@@ -92,6 +93,7 @@ end
 function loadLevel(idx)
   currentLevel = {}
   levelTime = 0
+  blueBallRemain = 0
 
   for row = 1, #levels[idx] do
     local rowStr = levels[idx][row]
@@ -103,6 +105,8 @@ function loadLevel(idx)
         worldPos.x = col - 1
         worldPos.y = row - 1
         -- TODO: store, read and set dx,dy
+      elseif code == "#" then
+        blueBallRemain = blueBallRemain + 1
       end
       currentLevel[row][col] = code
     end
@@ -215,24 +219,114 @@ function transitionTrigger()
   local nx, ny = offsetToAbsolute(0, frame.touchLead)
   if type == "x" then -- impact! FAIL!
     -- TODO: handle failure
+    bouncePlayer() -- boucing on red can be 'easy mode' for kids
   elseif type == "#" then -- blue dot, flip to red
-    -- TODO: score, countdown, check for looping, etc
-    currentLevel[ny][nx] = "x" -- 1-based vs 0-based issues
+    flipBallAt(nx, ny)
   elseif type == "g" then
     -- TODO: launch for 5 positions
   elseif type == "*" then
-    -- TODO: proper bounce
-    worldPos.speed = - worldPos.speed
-    worldPos.jump = 0
-    local tx, ty = offsetToAbsolute(0, -0.7)
-    frame.prevX = tx
-    frame.prevY = ty
-    setTouchLead()
-    if worldPos.speed < 0 then frame.headingForward = false else frame.headingForward = true end
-
+    bouncePlayer()
   elseif type == "0" then
     -- TODO: pick up ring
   end
+end
+
+-- true if any of the position's 8 neighbors are blue balls
+function hasBlue8Conn(x,y)
+  if (currentLevel[y - 1][x - 1] == '#') then return true end
+  if (currentLevel[y - 1][x    ] == '#') then return true end
+  if (currentLevel[y - 1][x + 1] == '#') then return true end
+  if (currentLevel[y    ][x - 1] == '#') then return true end
+  if (currentLevel[y    ][x + 1] == '#') then return true end
+  if (currentLevel[y + 1][x - 1] == '#') then return true end
+  if (currentLevel[y + 1][x    ] == '#') then return true end
+  if (currentLevel[y + 1][x + 1] == '#') then return true end
+  return false
+end
+-- return the 4-connected neighbors of the tile that contain red balls
+-- which are also 8-connected to a blue
+-- excludes (ox,oy) from the list
+function red4Conns(x,y, ox, oy)
+  local list = {}
+  if (currentLevel[y][x - 1] == "x") and ((ox ~= (x - 1)) or (oy ~= y)) and hasBlue8Conn(x - 1, y) then
+    table.insert(list, {x=(x - 1), y=y,       px=x, py=y})
+  end
+  if (currentLevel[y][x + 1] == "x") and ((ox ~= (x + 1)) or (oy ~= y)) and hasBlue8Conn(x + 1, y) then
+    table.insert(list, {x=(x + 1), y=y,       px=x, py=y})
+  end
+  if (currentLevel[y - 1][x] == "x") and ((ox ~= x) or (oy ~= (y - 1))) and hasBlue8Conn(x, y - 1) then
+    table.insert(list, {x=x,       y=(y - 1), px=x, py=y})
+  end
+  if (currentLevel[y + 1][x] == "x") and ((ox ~= x) or (oy ~= (y + 1))) and hasBlue8Conn(x, y + 1) then
+    table.insert(list, {x=x,       y=(y + 1), px=x, py=y})
+  end
+  return list
+end
+function TableConcat(t1,t2)
+    for i=1,#t2 do
+        t1[#t1+1] = t2[i]
+    end
+    return t1
+end
+function flipBallAt(nx, ny)
+  -- TODO: score, countdown, check for looping, etc
+  blueBallRemain = blueBallRemain - 1
+  currentLevel[ny][nx] = "x"
+
+  -- loop check: must complete a 4-connected loop (no diagonals) of red balls,
+  -- with at least 1 blue ball inside. Double-thick walls don't trigger
+  -- if a loop is detected, all the blue balls and their 8-connections flip to rings?
+
+  -- We build a table of reds that are 4 connected, with links back to the trigger ball
+  -- we only follow reds that are 8 connected to a blue
+
+  -- in both these lists, we have the x,y position we are looking at, plus the direction we came from
+  local escape = 1000
+  local traceBack = {}
+  local head = red4Conns(nx,ny) -- if any position is repeated here, we have a loop. If we run out, no loop so exit
+  local loopPositions = {}
+
+  while escape > 0 do escape = escape - 1
+    local newHead = {}
+    for i = 1, #head do
+      local p = head[i]
+      TableConcat(newHead, red4Conns(p.x, p.y, p.px, p.py))
+      appendMap(traceBack, p, p.x.."_"..p.y)
+    end
+    if #newHead < 2 then return end -- not possible to find a loop
+
+    -- check for overlaps
+    for i = 1, #newHead do
+      for j = 1, #newHead do -- not efficient, but should never be more than 4
+        if (i ~= j) and (newHead[i].x == newHead[j].x) and (newHead[i].y == newHead[j].y) then
+          escape = 0 -- got an overlap! time to back trace the loop
+        end
+      end
+    end
+    head = newHead
+  end
+
+  -- trace from the one end of the loop to the other. This excludes any traces
+  -- that went nowhere from our list
+  error("found a loop. (code not yet implemented)")
+end
+
+function appendMap(arry, obj, index)
+  if not arry[index] then
+    arry[index] = {obj}
+    return
+  end
+  table.insert(arry[index], obj)
+end
+
+function bouncePlayer()
+  worldPos.speed = - worldPos.speed
+  worldPos.jump = 0
+  local tx, ty = offsetToAbsolute(0, -0.7)
+  frame.prevX = tx
+  frame.prevY = ty
+  setTouchLead()
+  if worldPos.speed < 0 then frame.headingForward = false else frame.headingForward = true end
 end
 
 function rotToDxDy()
@@ -486,9 +580,17 @@ function drawUI()
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
   else
+    leftStr( "<"..blueBallRemain..">", 10, 10, 1)
     centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
-    centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
-    centreFontStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1, font)
+
+    if levelTime < 3 then
+      centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
+      centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
+      centreFontStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1, font)
+    end
+    if blueBallRemain < 1 then
+      centreFontStr( "(you win)", screenWidth / 2, screenHeight / 2, 2, font)
+    end
   end
 end
 
