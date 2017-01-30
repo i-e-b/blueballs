@@ -1,7 +1,7 @@
 local screenWidth, screenHeight, meshHeight, meshTop
 local font, stars, red, blue, gold, player
 
-local debug = false
+local showDebug = false
 
 local posTable = require "posTable"
 local levels = require "levels"
@@ -146,8 +146,8 @@ function love.update(dt)
   end
 
   -- debug switches
-  if (love.keyboard.isDown("z")) then debug = true end
-  if (love.keyboard.isDown("x")) then debug = false end
+  if (love.keyboard.isDown("z")) then showDebug = true end
+  if (love.keyboard.isDown("x")) then showDebug = false end
 
   if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
   if (worldPos.animSteps <= 0) then
@@ -263,10 +263,11 @@ function red4Conns(x,y, ox, oy)
   return list
 end
 function TableConcat(t1,t2)
-    for i=1,#t2 do
-        t1[#t1+1] = t2[i]
-    end
-    return t1
+  if (not t2) then return end
+  for i=1,#t2 do
+    t1[#t1+1] = t2[i]
+  end
+  return t1
 end
 function flipBallAt(nx, ny)
   -- TODO: score, countdown, check for looping, etc
@@ -283,32 +284,68 @@ function flipBallAt(nx, ny)
   -- in both these lists, we have the x,y position we are looking at, plus the direction we came from
   local escape = 1000
   local traceBack = {}
+  local traceBackX = 0
+  local traceBackY = 0
   local head = red4Conns(nx,ny) -- if any position is repeated here, we have a loop. If we run out, no loop so exit
-  local loopPositions = {}
 
   while escape > 0 do escape = escape - 1
     local newHead = {}
     for i = 1, #head do
       local p = head[i]
       TableConcat(newHead, red4Conns(p.x, p.y, p.px, p.py))
+      -- TODO: only add reds if they share a blue with the prev step.
       appendMap(traceBack, p, p.x.."_"..p.y)
     end
     if #newHead < 2 then return end -- not possible to find a loop
+    head = newHead
 
     -- check for overlaps
     for i = 1, #newHead do
       for j = 1, #newHead do -- not efficient, but should never be more than 4
         if (i ~= j) and (newHead[i].x == newHead[j].x) and (newHead[i].y == newHead[j].y) then
+          traceBackX = newHead[i].x
+          traceBackY = newHead[i].y
+          appendMap(traceBack, newHead[i], newHead[i].x.."_"..newHead[i].y)
+          --appendMap(traceBack, newHead[j], key) -- we hit this later in the loop anyway
           escape = 0 -- got an overlap! time to back trace the loop
         end
       end
     end
-    head = newHead
   end
 
   -- trace from the one end of the loop to the other. This excludes any traces
   -- that went nowhere from our list
-  error("found a loop. (code not yet implemented)")
+  local loopPositions = { {x=nx, y=ny} }
+  local traceQueue = traceBack[traceBackX.."_"..traceBackY]
+  while #traceQueue > 0 do
+    local nextQueue = {}
+    for i = 1,#traceQueue do local t = traceQueue[i]
+      loopPositions[1+#loopPositions] = {x=t.x, y=t.y}
+      TableConcat(nextQueue, traceBack[t.px.."_"..t.py])
+    end
+    traceQueue = nextQueue
+  end
+
+  -- once we have the loop, we flip it to rings by scan linear
+  -- we need to check there is at least one blue ball *inside* our loop.
+  for i = 1,#loopPositions do local t = loopPositions[i]
+    currentLevel[t.y][t.x] = "*" -- for testing, flip to stars
+  end
+end
+
+function tprint (tbl, indent)
+  if not indent then indent = 0 end
+  for k, v in pairs(tbl) do
+    formatting = string.rep("  ", indent) .. k .. ": "
+    if type(v) == "table" then
+      print(formatting)
+      tprint(v, indent+1)
+    elseif type(v) == 'boolean' then
+      print(formatting .. tostring(v))
+    else
+      print(formatting .. v)
+    end
+  end
 end
 
 function appendMap(arry, obj, index)
@@ -415,7 +452,7 @@ function drawNormal()
   local yf = meshHeight / 192
   local pidx = math.floor((phase % 4) + 1)
 
-  if debug then leftStr("<"..pidx.."]", 10, 170, 2) end
+  if showDebug then leftStr("<"..pidx.."]", 10, 170, 2) end
 
   for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
     local pos = posTable.mov[pidx][i]
@@ -535,7 +572,7 @@ function drawRotation()
   local xf = screenWidth / 320
   local yf = meshHeight / 192
 
-  if debug then leftStr("<"..pidx.."]", 10, 170, 2) end
+  if showDebug then leftStr("<"..pidx.."]", 10, 170, 2) end
 
   -- adjust the rotation offsets
   -- TODO: for two of the quadrants, there is a brief flash of wrong position.
@@ -572,7 +609,7 @@ function drawUI()
   x = x / r
   y = math.max(0, (y - t) / h)
 
-  if debug then
+  if showDebug then
     leftStr( "rot <"..(worldPos.rot)..">", 10, 10, 1)
     leftStr( "spd <"..(math.floor(worldPos.speed))..">", 10, 30, 1)
 
@@ -581,7 +618,6 @@ function drawUI()
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
   else
     leftStr( "<"..blueBallRemain..">", 10, 10, 1)
-    centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
 
     if levelTime < 3 then
       centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
