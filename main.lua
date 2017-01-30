@@ -361,9 +361,16 @@ function flipBallAt(nx, ny)
     traceQueue = nextQueue
   end
 
-  -- once we have the loop, we flip it to rings by scan linear
-  -- we need to check there is at least one blue ball *inside* our loop.
+  -- now we have a load of loop positions.
+  -- for each blue ball inside our loop, we flip it and it's
+  -- 8-connections to rings.
   for i = 1,#loopPositions do local t = loopPositions[i]
+    -- the plan:
+    -- go through each scan line, starting with 'x=0'
+    -- If we see a position on our list, we increment 'x'
+    -- if we see a blue ball and x==1 we add it to the detonate list.
+    -- if we see a ball not on the loop list, and x>1, set x to 0
+    -- then blow up the detonate list
     currentLevel[t.y][t.x] = "*" -- for testing, flip to stars
   end
 end
