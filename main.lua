@@ -232,32 +232,69 @@ function transitionTrigger()
 end
 
 -- true if any of the position's 8 neighbors are blue balls
-function hasBlue8Conn(x,y)
-  if (currentLevel[y - 1][x - 1] == '#') then return true end
-  if (currentLevel[y - 1][x    ] == '#') then return true end
-  if (currentLevel[y - 1][x + 1] == '#') then return true end
-  if (currentLevel[y    ][x - 1] == '#') then return true end
-  if (currentLevel[y    ][x + 1] == '#') then return true end
-  if (currentLevel[y + 1][x - 1] == '#') then return true end
-  if (currentLevel[y + 1][x    ] == '#') then return true end
-  if (currentLevel[y + 1][x + 1] == '#') then return true end
+-- that are shared with the 8-conn blue balls of the parent
+-- px,py: position of the parent
+-- dx,dy: offset of the target position. Must be within -1..1
+function hasBlue8Conn(px,py, dx, dy)
+  local x = px+dx
+  local y = py+dy
+  if (dx == 1) then
+    if (dy == 1) then
+      if (currentLevel[y - 1][x    ] == '#') then return true end
+      if (currentLevel[y    ][x - 1] == '#') then return true end
+    elseif (dy == 0) then
+      if (currentLevel[y - 1][x - 1] == '#') then return true end
+      if (currentLevel[y - 1][x    ] == '#') then return true end
+      if (currentLevel[y + 1][x - 1] == '#') then return true end
+      if (currentLevel[y + 1][x    ] == '#') then return true end
+    elseif (dy == -1) then
+      if (currentLevel[y + 1][x    ] == '#') then return true end
+      if (currentLevel[y    ][x - 1] == '#') then return true end
+    end
+  elseif (dx == 0) then
+    if (dy == 1) then
+      if (currentLevel[y - 1][x - 1] == '#') then return true end
+      if (currentLevel[y    ][x - 1] == '#') then return true end
+      if (currentLevel[y - 1][x + 1] == '#') then return true end
+      if (currentLevel[y    ][x + 1] == '#') then return true end
+    elseif (dy == -1) then
+      if (currentLevel[y    ][x - 1] == '#') then return true end
+      if (currentLevel[y + 1][x - 1] == '#') then return true end
+      if (currentLevel[y    ][x + 1] == '#') then return true end
+      if (currentLevel[y + 1][x + 1] == '#') then return true end
+    end
+  elseif (dx == -1) then
+    if (dy == 1) then
+      if (currentLevel[y - 1][x    ] == '#') then return true end
+      if (currentLevel[y    ][x + 1] == '#') then return true end
+    elseif (dy == 0) then
+      if (currentLevel[y - 1][x + 1] == '#') then return true end
+      if (currentLevel[y - 1][x    ] == '#') then return true end
+      if (currentLevel[y + 1][x + 1] == '#') then return true end
+      if (currentLevel[y + 1][x    ] == '#') then return true end
+    elseif (dy == -1) then
+      if (currentLevel[y + 1][x    ] == '#') then return true end
+      if (currentLevel[y    ][x + 1] == '#') then return true end
+    end
+  end
   return false
 end
+
 -- return the 4-connected neighbors of the tile that contain red balls
 -- which are also 8-connected to a blue
 -- excludes (ox,oy) from the list
 function red4Conns(x,y, ox, oy)
   local list = {}
-  if (currentLevel[y][x - 1] == "x") and ((ox ~= (x - 1)) or (oy ~= y)) and hasBlue8Conn(x - 1, y) then
+  if (currentLevel[y][x - 1] == "x") and ((ox ~= (x - 1)) or (oy ~= y)) and hasBlue8Conn(x,y, -1,0) then
     table.insert(list, {x=(x - 1), y=y,       px=x, py=y})
   end
-  if (currentLevel[y][x + 1] == "x") and ((ox ~= (x + 1)) or (oy ~= y)) and hasBlue8Conn(x + 1, y) then
+  if (currentLevel[y][x + 1] == "x") and ((ox ~= (x + 1)) or (oy ~= y)) and hasBlue8Conn(x,y, 1,0) then
     table.insert(list, {x=(x + 1), y=y,       px=x, py=y})
   end
-  if (currentLevel[y - 1][x] == "x") and ((ox ~= x) or (oy ~= (y - 1))) and hasBlue8Conn(x, y - 1) then
+  if (currentLevel[y - 1][x] == "x") and ((ox ~= x) or (oy ~= (y - 1))) and hasBlue8Conn(x,y, 0,-1) then
     table.insert(list, {x=x,       y=(y - 1), px=x, py=y})
   end
-  if (currentLevel[y + 1][x] == "x") and ((ox ~= x) or (oy ~= (y + 1))) and hasBlue8Conn(x, y + 1) then
+  if (currentLevel[y + 1][x] == "x") and ((ox ~= x) or (oy ~= (y + 1))) and hasBlue8Conn(x,y, 0,1) then
     table.insert(list, {x=x,       y=(y + 1), px=x, py=y})
   end
   return list
@@ -270,7 +307,6 @@ function TableConcat(t1,t2)
   return t1
 end
 function flipBallAt(nx, ny)
-  -- TODO: score, countdown, check for looping, etc
   blueBallRemain = blueBallRemain - 1
   currentLevel[ny][nx] = "x"
 
@@ -293,7 +329,6 @@ function flipBallAt(nx, ny)
     for i = 1, #head do
       local p = head[i]
       TableConcat(newHead, red4Conns(p.x, p.y, p.px, p.py))
-      -- TODO: only add reds if they share a blue with the prev step.
       appendMap(traceBack, p, p.x.."_"..p.y)
     end
     if #newHead < 2 then return end -- not possible to find a loop
