@@ -1,5 +1,5 @@
 local screenWidth, screenHeight, meshHeight, meshTop
-local font, stars, red, blue, gold, player
+local font, stars, red, blue, gold, player, ring_1
 
 local showDebug = false
 
@@ -7,6 +7,7 @@ local posTable = require "posTable"
 local levels = require "levels"
 local levelTime = 0
 local blueBallRemain = 0
+local ringsCollected = 0
 local currentLevel = {}
 local levelRows = 0
 local levelCols = 0
@@ -42,12 +43,14 @@ function love.load()
   red = love.graphics.newImageFont("red_font.png", "0123456789ABCDEx")
   blue = love.graphics.newImageFont("blue_font.png", "0123456789ABCDEx")
   gold = love.graphics.newImageFont("gold_font.png", "0123456789ABCDEx")
+  ring_1 = love.graphics.newImageFont("ring_1_font.png", "0123456789ABCDEx")
   player = love.graphics.newImageFont("player_font.png", "ABCDEFGHIJK0123456")
   font:setFilter("linear", "nearest")
   stars:setFilter("linear", "nearest")
   red:setFilter("linear", "nearest")
   blue:setFilter("linear", "nearest")
   gold:setFilter("linear", "nearest")
+  ring_1:setFilter("linear", "nearest")
   player:setFilter("linear", "nearest")
   love.graphics.setFont(font)
   -- green channel encodes palette index
@@ -96,6 +99,7 @@ function loadLevel(idx)
   currentLevel = {}
   levelTime = 0
   blueBallRemain = 0
+  ringsCollected = 0
 
   levelRows = #levels[idx]
   levelCols = (levels[idx][1]):len()
@@ -231,7 +235,8 @@ function transitionTrigger()
   elseif type == "*" then
     bouncePlayer()
   elseif type == "0" then
-    -- TODO: pick up ring
+    ringsCollected = ringsCollected + 1
+    currentLevel[ny][nx] = " "
   end
 end
 
@@ -310,6 +315,9 @@ function TableConcat(t1,t2)
   end
   return t1
 end
+
+-- This handles flipping blue->red and converting red loops to rings.
+-- More complex than the rest of the game!
 function flipBallAt(nx, ny)
   blueBallRemain = blueBallRemain - 1
   currentLevel[ny][nx] = "x"
@@ -371,34 +379,52 @@ function flipBallAt(nx, ny)
 
   -- now we have a load of loop positions.
   -- go through the level in scan lines, noting the position of all trapped blue balls
+  -- when we see the other side of a loop, we add the found balls to the pop list
   local pops = {}
+  local pending = {}
   local trig = 0
   for y = 1, levelRows do
     trig = 0 -- trigger state: 0:wait for loop, 1: loop edge, 2:loop body, 3:loop exit
     for x = 1, levelCols do
       if (loopPositions[x]) and (loopPositions[x][y]) then
-        if (trig < 2) then trig = 1 else trig = 3 end
+        if (trig < 2) then trig = 1 else
+          TableConcat(pops, pending)
+          pending = {}
+          trig = 3
+        end
       elseif (trig == 1) then
         if (currentLevel[y][x] == "#") then -- a blueball to pop
           trig = 2 -- latch to inside of loop
-          table.insert(pops, {x=x, y=y})
+          table.insert(pending, {x=x, y=y})
         else
           trig = 0 -- we left the edge of
         end
       elseif (trig == 2) and (currentLevel[y][x] == "#") then
-        table.insert(pops, {x=x, y=y})
+        table.insert(pending, {x=x, y=y})
       elseif (trig > 2) then -- out of the loop
         trig = 0
       end -- not inside a loop, or empty gap in a loop
     end
   end
 
-  -- Finally, pop all the trapped blue balls (8 conn)
+  -- Finally, pop all the trapped blue balls and their 8-connected red balls
   for i = 1,#pops do
-    -- stars to test
-    currentLevel[pops[i].y][pops[i].x] = "*"
+    -- flip the blue to a ring
+    local x = pops[i].x
+    local y = pops[i].y
+    currentLevel[y][x] = "0"
     blueBallRemain = blueBallRemain - 1
+    -- flip reds to rings
+    if (currentLevel[y-1][x-1] == "x") then currentLevel[y-1][x-1] = "0" end
+    if (currentLevel[y-1][x  ] == "x") then currentLevel[y-1][x  ] = "0" end
+    if (currentLevel[y-1][x+1] == "x") then currentLevel[y-1][x+1] = "0" end
 
+    if (currentLevel[y  ][x-1] == "x") then currentLevel[y  ][x-1] = "0" end
+    if (currentLevel[y  ][x+1] == "x") then currentLevel[y  ][x+1] = "0" end
+
+    if (currentLevel[y+1][x-1] == "x") then currentLevel[y+1][x-1] = "0" end
+    if (currentLevel[y+1][x  ] == "x") then currentLevel[y+1][x  ] = "0" end
+    if (currentLevel[y+1][x+1] == "x") then currentLevel[y+1][x+1] = "0" end
   end
 end
 
@@ -547,7 +573,7 @@ function setBallFont(type)
   elseif type == "*" then
     love.graphics.setFont(stars)
   elseif type == "0" then
-    --love.graphics.setFont(Red)
+    love.graphics.setFont(ring_1) -- TODO: timer to spin the rings
   end
 end
 
@@ -687,6 +713,7 @@ function drawUI()
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
   else
     leftStr( "<"..blueBallRemain..">", 10, 10, 1)
+    rightStr("["..ringsCollected.."]", screenWidth - 10, 10, 1)
 
     if levelTime < 3 then
       centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
