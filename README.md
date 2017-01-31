@@ -19,5 +19,9 @@ direction: turning left scrolls the background right)
 
 ## Todo:
 
-* add a position/rotation counter and calculate the texture and palette from that
-* build the object position tables
+* interpolated ball positions for non rotation
+* rings spin animation
+* refinement to turn timing (latch turn press, advance to target square a little)
+* level end animation/ win screen
+* level transition and the rest of the levels
+* gamepad controls, difficulty setting
