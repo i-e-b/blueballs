@@ -8,6 +8,8 @@ local levels = require "levels"
 local levelTime = 0
 local blueBallRemain = 0
 local currentLevel = {}
+local levelRows = 0
+local levelCols = 0
 local frame = { -- frame and transition info
   player = 0, -- player animation frame
   prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
@@ -95,6 +97,8 @@ function loadLevel(idx)
   levelTime = 0
   blueBallRemain = 0
 
+  levelRows = #levels[idx]
+  levelCols = (levels[idx][1]):len()
   for row = 1, #levels[idx] do
     local rowStr = levels[idx][row]
     table.insert(currentLevel, {})
@@ -350,28 +354,51 @@ function flipBallAt(nx, ny)
 
   -- trace from the one end of the loop to the other. This excludes any traces
   -- that went nowhere from our list
-  local loopPositions = { {x=nx, y=ny} }
+  local loopPositions = { } -- {x=nx, y=ny}
+  loopPositions[nx] = {}
+  loopPositions[nx][ny] = true
   local traceQueue = traceBack[traceBackX.."_"..traceBackY]
   while #traceQueue > 0 do
     local nextQueue = {}
     for i = 1,#traceQueue do local t = traceQueue[i]
-      loopPositions[1+#loopPositions] = {x=t.x, y=t.y}
+      loopPositions[t.x] = loopPositions[t.x] or {}
+      loopPositions[t.x][t.y] = true
+      --loopPositions[1+#loopPositions] = {x=t.x, y=t.y}
       TableConcat(nextQueue, traceBack[t.px.."_"..t.py])
     end
     traceQueue = nextQueue
   end
 
   -- now we have a load of loop positions.
-  -- for each blue ball inside our loop, we flip it and it's
-  -- 8-connections to rings.
-  for i = 1,#loopPositions do local t = loopPositions[i]
-    -- the plan:
-    -- go through each scan line, starting with 'x=0'
-    -- If we see a position on our list, we increment 'x'
-    -- if we see a blue ball and x==1 we add it to the detonate list.
-    -- if we see a ball not on the loop list, and x>1, set x to 0
-    -- then blow up the detonate list
-    currentLevel[t.y][t.x] = "*" -- for testing, flip to stars
+  -- go through the level in scan lines, noting the position of all trapped blue balls
+  local pops = {}
+  local trig = 0
+  for y = 1, levelRows do
+    trig = 0 -- trigger state: 0:wait for loop, 1: loop edge, 2:loop body, 3:loop exit
+    for x = 1, levelCols do
+      if (loopPositions[x]) and (loopPositions[x][y]) then
+        if (trig < 2) then trig = 1 else trig = 3 end
+      elseif (trig == 1) then
+        if (currentLevel[y][x] == "#") then -- a blueball to pop
+          trig = 2 -- latch to inside of loop
+          table.insert(pops, {x=x, y=y})
+        else
+          trig = 0 -- we left the edge of
+        end
+      elseif (trig == 2) and (currentLevel[y][x] == "#") then
+        table.insert(pops, {x=x, y=y})
+      elseif (trig > 2) then -- out of the loop
+        trig = 0
+      end -- not inside a loop, or empty gap in a loop
+    end
+  end
+
+  -- Finally, pop all the trapped blue balls (8 conn)
+  for i = 1,#pops do
+    -- stars to test
+    currentLevel[pops[i].y][pops[i].x] = "*"
+    blueBallRemain = blueBallRemain - 1
+
   end
 end
 
@@ -547,8 +574,8 @@ function offsetToAbsolute(dx,dy)
   local px = math.floor(worldPos.x + dpx)
   local py = math.floor(worldPos.y + dpy)
 
-  local levelX = (px % 32) + 1 -- TODO: variable level size
-  local levelY = (py % 32) + 1 -- TODO: variable level size
+  local levelX = (px % levelCols) + 1
+  local levelY = (py % levelRows) + 1
 
   return levelX, levelY
 end
