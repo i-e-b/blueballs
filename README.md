@@ -21,8 +21,8 @@ direction: turning left scrolls the background right)
 
 * interpolated ball positions for non rotation
 * rings spin animation
-* refinement to turn timing (latch turn press, advance to target square a little)
 * level end animation/ win screen : balls burst off the stage (multiply distance from 0,0 position?)
 * level transition and the rest of the levels
 * gamepad controls, difficulty setting
+* phone touch controls
 * failure (hard mode) : the stage spins as it fades to white

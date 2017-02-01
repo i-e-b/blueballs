@@ -9,6 +9,7 @@ local levelTime = 0
 local blueBallRemain = 0
 local ringsCollected = 0
 local currentLevel = {}
+local localLevelNumber = 1
 local levelRows = 0
 local levelCols = 0
 local frame = { -- frame and transition info
@@ -16,7 +17,11 @@ local frame = { -- frame and transition info
   prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
   prevY = 0,
   touchLead = 0.35, -- leading edge for touching next position
-  headingForward = true -- if true, we try to match the calculated forwards speed. Else we just coast at current speed.
+  headingForward = true, -- if true, we try to match the calculated forwards speed. Else we just coast at current speed.
+  leftTurnLatch = false, -- pressed left control
+  rightTurnLatch = false, -- pressed right control
+  jumpLatch = false,
+  jumpHeight = 1
 }
 local worldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
@@ -92,7 +97,7 @@ function love.load()
   rot3:setFilter("nearest", "nearest")
   rot4:setFilter("nearest", "nearest")
 
-  loadLevel(1)
+  loadLevel(localLevelNumber)
 end
 
 function loadLevel(idx)
@@ -137,11 +142,18 @@ function P(idx)
 end
 
 function love.update(dt)
+  -- TEMP LEVEL TRANSITION; TODO: improve
+  if (blueBallRemain < 1) then
+    localLevelNumber = localLevelNumber + 1
+    loadLevel(localLevelNumber)
+  end
+
   if (dt > 0.1) then return end
   levelTime = levelTime + dt
   frame.player = frame.player + (dt * worldPos.speed * 2)
   local tstep = dt * worldPos.speed
   local qstep = tstep / 4
+  readControls()
 
   -- do position updates
   worldPos.animSteps = math.max(0, worldPos.animSteps - (tstep))
@@ -153,34 +165,33 @@ function love.update(dt)
     worldPos.rot = math.floor(worldPos.rot + 0.4999)
   end
 
-  -- debug switches
-  if (love.keyboard.isDown("z")) then showDebug = true end
-  if (love.keyboard.isDown("x")) then showDebug = false end
-
   if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
   if (worldPos.animSteps <= 0) then
-    if (worldPos.canTurn) and (worldPos.jump < 0.3) and (love.keyboard.isDown("left")) then
+    if (worldPos.canTurn) and (worldPos.jump <= 0) and (frame.leftTurnLatch) then
+      frame.leftTurnLatch = false
       worldPos.drot = -1
       worldPos.isTurning = true
       worldPos.canTurn = false
       worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot - 0.125
-    elseif (worldPos.canTurn) and (worldPos.jump < 0.3) and (love.keyboard.isDown("right")) then
+    elseif (worldPos.canTurn) and (worldPos.jump <= 0) and (frame.rightTurnLatch) then
+      frame.rightTurnLatch = false
       worldPos.drot = 1
       worldPos.isTurning = true
       worldPos.canTurn = false
       worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot + 0.125
     else -- start moving forward, unlock turn
+      frame.jumpLatch = false
+      frame.leftTurnLatch = false
+      frame.rightTurnLatch = false
       worldPos.animSteps = 4
       worldPos.canTurn = true
     end
   end
 
-  -- switch forward
-  if (love.keyboard.isDown("up")) then frame.headingForward = true end
   if frame.headingForward then
-    local ds = math.min(dt * 10, targetSpeed() - worldPos.speed)
+    local ds = math.max(-dt * 20, math.min(dt * 10, targetSpeed() - worldPos.speed))
     worldPos.speed = worldPos.speed + ds
   end
 
@@ -195,7 +206,7 @@ function love.update(dt)
     worldPos.x = worldPos.x + (qstep * worldPos.dx)
   end
   if (worldPos.jump > 0) then
-    worldPos.jump = worldPos.jump - (qstep / 2)
+    worldPos.jump = worldPos.jump - tstep
   end
 
   -- trigger ball touch transitions
@@ -208,9 +219,42 @@ function love.update(dt)
   end
 
   -- jump. We do this after triggers so you can't bunny hop over everything
-  if (love.keyboard.isDown("space")) and (worldPos.jump <= 0) and (worldPos.speed > 0) and (not worldPos.isTurning) then
-    worldPos.jump = 1
-    worldPos.canTurn = false
+  if (frame.jumpLatch) and (worldPos.jump <= 0) and (worldPos.speed > 0) and (not worldPos.isTurning) then
+    regularJump()
+  end
+end
+
+function regularJump()
+  worldPos.jump = 8
+  frame.jumpHeight = 8
+  frame.jumpLatch = false
+  worldPos.canTurn = false
+end
+function goldJump()
+  worldPos.jump = 24
+  frame.jumpHeight = 24
+  worldPos.speed = 20
+  frame.jumpLatch = false
+  worldPos.canTurn = false
+end
+
+function readControls()
+  -- debug switches
+  if (love.keyboard.isDown("z")) then showDebug = true end
+  if (love.keyboard.isDown("x")) then showDebug = false end
+  if (love.keyboard.isDown("c")) then -- simulate gold ball
+    goldJump()
+  end
+
+  -- limit turn pickup to improve 'feel'
+  if (worldPos.animSteps > 0.7) and (worldPos.animSteps < 3) then
+    if (love.keyboard.isDown("left")) then frame.leftTurnLatch = true end
+    if (love.keyboard.isDown("right")) then frame.rightTurnLatch = true end
+  end
+  if (love.keyboard.isDown("space")) then frame.jumpLatch = true end
+  if (love.keyboard.isDown("up")) then
+    frame.headingForward = true
+    frame.jumpLatch = false
   end
 end
 
@@ -231,7 +275,7 @@ function transitionTrigger()
   elseif type == "#" then -- blue dot, flip to red
     flipBallAt(nx, ny)
   elseif type == "g" then
-    -- TODO: launch for 5 positions
+    goldJump()
   elseif type == "*" then
     bouncePlayer()
   elseif type == "0" then
@@ -353,7 +397,6 @@ function flipBallAt(nx, ny)
           traceBackX = newHead[i].x
           traceBackY = newHead[i].y
           appendMap(traceBack, newHead[i], newHead[i].x.."_"..newHead[i].y)
-          --appendMap(traceBack, newHead[j], key) -- we hit this later in the loop anyway
           escape = 0 -- got an overlap! time to back trace the loop
         end
       end
@@ -371,7 +414,6 @@ function flipBallAt(nx, ny)
     for i = 1,#traceQueue do local t = traceQueue[i]
       loopPositions[t.x] = loopPositions[t.x] or {}
       loopPositions[t.x][t.y] = true
-      --loopPositions[1+#loopPositions] = {x=t.x, y=t.y}
       TableConcat(nextQueue, traceBack[t.px.."_"..t.py])
     end
     traceQueue = nextQueue
@@ -384,10 +426,13 @@ function flipBallAt(nx, ny)
   local pending = {}
   local trig = 0
   for y = 1, levelRows do
+    pending = {}
     trig = 0 -- trigger state: 0:wait for loop, 1: loop edge, 2:loop body, 3:loop exit
     for x = 1, levelCols do
       if (loopPositions[x]) and (loopPositions[x][y]) then
-        if (trig < 2) then trig = 1 else
+        if (trig < 2) then
+          trig = 1
+        else
           TableConcat(pops, pending)
           pending = {}
           trig = 3
@@ -397,7 +442,7 @@ function flipBallAt(nx, ny)
           trig = 2 -- latch to inside of loop
           table.insert(pending, {x=x, y=y})
         else
-          trig = 0 -- we left the edge of
+          trig = 0 -- we left the edge of a loop
         end
       elseif (trig == 2) and (currentLevel[y][x] == "#") then
         table.insert(pending, {x=x, y=y})
@@ -505,15 +550,14 @@ function drawTails()
   love.graphics.setFont(player)
 
   -- shadow
-  -- TODO: shadow should go between ground and balls.
   leftStr("H", (screenWidth/2) - 22, screenHeight - 182, 2)
   local height = 0
 
   -- body
   if (worldPos.jump > 0) then
-    height = math.sin(worldPos.jump * math.pi) * 40
-    local b = math.floor(worldPos.jump * 2) + 1
-    leftStr(("KJI"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182 - height, 2)
+    height = math.sin((worldPos.jump / frame.jumpHeight) * math.pi) * 4 * frame.jumpHeight
+    local b = math.floor((worldPos.jump / frame.jumpHeight) * 2) + 1
+    leftStr(("KJIKJIKJI"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182 - height, 2)
   else
     local b = math.floor(frame.player % 12) + 1
     leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
@@ -670,7 +714,6 @@ function drawRotation()
   if showDebug then leftStr("<"..pidx.."]", 10, 170, 2) end
 
   -- adjust the rotation offsets
-  -- TODO: for two of the quadrants, there is a brief flash of wrong position.
   local ddy = 0
   if (worldPos.rot > 2) then
     ddy = 1
