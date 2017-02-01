@@ -254,6 +254,8 @@ function readControls()
   if (love.keyboard.isDown("space")) then frame.jumpLatch = true end
   if (love.keyboard.isDown("up")) then
     frame.headingForward = true
+    frame.leftTurnLatch = false
+    frame.rightTurnLatch = false
     frame.jumpLatch = false
   end
 end
@@ -532,6 +534,8 @@ function idxPhase()
   return corePhase * 4
 end
 
+--##############################################
+
 function love.draw()
   drawSky()
 
@@ -544,6 +548,17 @@ function love.draw()
   drawTails()
 
   drawUI()
+
+  -- fade here?
+  if false then
+    love.graphics.setBlendMode("add")
+    local f = math.min(levelTime * 100, 255)
+    local f2 = math.min((levelTime * 100) - f, 255)
+  	love.graphics.setColor(f,f,f2)
+  	love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
+  	love.graphics.setColor(255,255,255)
+    love.graphics.setBlendMode("alpha")
+  end
 end
 
 function drawTails()
