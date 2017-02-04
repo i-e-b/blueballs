@@ -1,12 +1,13 @@
 -- Game levels.
 -- Red:x, Blue:#, Gold:g, Star:*, Ring:0, Blank:" "
--- Sonic: s TODO: directional
+-- Sonic: s (rotation is 0 to 3... 0= \/  1= >  2= /\  3= <)
 -- Standard levels are 32x32. Custom levels can be any size, but all rows
 -- must be the same length
 
 
 return {
   { -- Level [1]
+    rotation = 0, ringsAvail = 64, layout = {
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxs            **             xx",
@@ -39,8 +40,10 @@ return {
 "xx             **             xx",
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+}
   },
   { -- level[2]
+    rotation = 3, ringsAvail = 111, layout = {
 "xxxx   xxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxx   xxxxxxxxxxxxxxxx         ",
 "xxxx   xxxxxxxxxxxxxxxx         ",
@@ -68,11 +71,12 @@ return {
 "x         xxxx*###*xxxxxx*###*xx",
 "x  #####  xxx**###**xx****   *xx",
 "x  #####              ####   *xx",
-"x  ##*##       s      ####   *xx",
+"x  ##*##        s     ####   *xx",
 "x  #####              ####   *xx",
 "x  #####  xxxx*****xxx********xx",
 "x         xxxxxxxxxxxxxxxxxxxxxx",
 "x         xxxxxxxxxxxxxxxxxxxxxx"
+}
   }
 
 }

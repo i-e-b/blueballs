@@ -1,5 +1,7 @@
 local screenWidth, screenHeight, meshHeight, meshTop
 local font, stars, red, blue, gold, player, ring_1
+local music
+local winJumpImg
 
 local showDebug = false
 
@@ -7,23 +9,24 @@ local posTable = require "posTable"
 local levels = require "levels"
 local levelTime = 0
 local blueBallRemain = 0
-local ringsCollected = 0
+local ringsRemain = 0
 local currentLevel = {}
 local localLevelNumber = 1
 local levelRows = 0
 local levelCols = 0
-local frame = { -- frame and transition info
-  player = 0, -- player animation frame
+local templateFrame = { -- frame and transition info
+  player = 3, -- player animation frame
   prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
   prevY = 0,
   touchLead = 0.35, -- leading edge for touching next position
-  headingForward = true, -- if true, we try to match the calculated forwards speed. Else we just coast at current speed.
+  headingForward = false, -- if true, we try to match the calculated forwards speed. Else we just coast at current speed.
   leftTurnLatch = false, -- pressed left control
   rightTurnLatch = false, -- pressed right control
   jumpLatch = false,
-  jumpHeight = 1
+  jumpHeight = 1,
+  avatarOffset = 0,  -- for level transition
 }
-local worldPos = { -- world state
+local templateWorldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
                   drot = 0,      -- rotate direction (-1 or 1)
                   animSteps = 0, -- steps remaining
@@ -36,8 +39,12 @@ local worldPos = { -- world state
                   canTurn = false,
                   speed = 0      -- actual current speed. Can be negative when going backwards
                 }
+local frame = {}
+local worldPos = {}
 
 function love.load()
+  for k,v in pairs(templateFrame) do frame[k] = v end
+  for k,v in pairs(templateWorldPos) do worldPos[k] = v end
   love.window.fullscreen = (love.system.getOS() == "Android")
   screenWidth, screenHeight = love.graphics.getDimensions( )
   meshTop = screenHeight / 3
@@ -58,6 +65,11 @@ function love.load()
   ring_1:setFilter("linear", "nearest")
   player:setFilter("linear", "nearest")
   love.graphics.setFont(font)
+
+  winJumpImg = love.graphics.newImage("win_jump.png")
+  winJumpImg:setFilter("linear", "nearest")
+
+  -- Palette animation shader
   -- green channel encodes palette index
   -- background is last color index
   -- the palette lookup can be simpler on PC, but this works on PC and mobile
@@ -98,18 +110,29 @@ function love.load()
   rot4:setFilter("nearest", "nearest")
 
   loadLevel(localLevelNumber)
+
+  --music = love.audio.newSource("popcorn.mod")
+  --music:play()
 end
 
 function loadLevel(idx)
   currentLevel = {}
   levelTime = 0
-  blueBallRemain = 0
-  ringsCollected = 0
+  for k,v in pairs(templateFrame) do frame[k] = v end
+  for k,v in pairs(templateWorldPos) do worldPos[k] = v end
 
-  levelRows = #levels[idx]
-  levelCols = (levels[idx][1]):len()
-  for row = 1, #levels[idx] do
-    local rowStr = levels[idx][row]
+  blueBallRemain = 0
+  ringsRemain = levels[idx].ringsAvail
+  worldPos.rot = levels[idx].rotation
+  worldPos.speed = 0.000000001
+  rotToDxDy()
+
+  local layout = levels[idx].layout
+
+  levelRows = #layout
+  levelCols = (layout[1]):len()
+  for row = 1, #layout do
+    local rowStr = layout[row]
     table.insert(currentLevel, {})
     for col = 1, rowStr:len() do
       local code = rowStr:sub(col,col)
@@ -117,13 +140,13 @@ function loadLevel(idx)
         code = " "
         worldPos.x = col - 1
         worldPos.y = row - 1
-        -- TODO: store, read and set dx,dy
       elseif code == "#" then
         blueBallRemain = blueBallRemain + 1
       end
       currentLevel[row][col] = code
     end
   end
+  setTouchLead()
 end
 
 local A = { 33,109,0,255 }
@@ -142,27 +165,32 @@ function P(idx)
 end
 
 function love.update(dt)
-  -- TEMP LEVEL TRANSITION; TODO: improve
-  if (blueBallRemain < 1) then
-    localLevelNumber = localLevelNumber + 1
-    loadLevel(localLevelNumber)
-  end
-
   if (dt > 0.1) then return end
   levelTime = levelTime + dt
   frame.player = frame.player + (dt * worldPos.speed * 2)
-  local tstep = dt * worldPos.speed
-  local qstep = tstep / 4
-  readControls()
+
+  local tstep = 0
+  local qstep = 0
+  if blueBallRemain > 0 then
+    tstep = dt * worldPos.speed
+    qstep = tstep / 4
+    readControls()
+  else
+    frame.avatarOffset = math.min(600, frame.avatarOffset + (dt * 800))
+    if (love.keyboard.isDown("space")) and (frame.avatarOffset > 300) then
+      localLevelNumber = localLevelNumber + 1
+      loadLevel(localLevelNumber)
+    end
+  end
 
   -- do position updates
   worldPos.animSteps = math.max(0, worldPos.animSteps - (tstep))
 
   if (worldPos.animSteps <= 0) then
     worldPos.isTurning = false
-    worldPos.y = math.floor(worldPos.y + 0.4999)
-    worldPos.x = math.floor(worldPos.x + 0.4999)
-    worldPos.rot = math.floor(worldPos.rot + 0.4999)
+    worldPos.y = math.floor(worldPos.y + 0.5)
+    worldPos.x = math.floor(worldPos.x + 0.5)
+    worldPos.rot = math.floor(worldPos.rot + 0.5)
   end
 
   if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
@@ -251,7 +279,9 @@ function readControls()
     if (love.keyboard.isDown("left")) then frame.leftTurnLatch = true end
     if (love.keyboard.isDown("right")) then frame.rightTurnLatch = true end
   end
-  if (love.keyboard.isDown("space")) then frame.jumpLatch = true end
+  if (love.keyboard.isDown("space")) then
+    frame.jumpLatch = true
+  end
   if (love.keyboard.isDown("up")) then
     frame.headingForward = true
     frame.leftTurnLatch = false
@@ -276,12 +306,16 @@ function transitionTrigger()
     bouncePlayer() -- boucing on red can be 'easy mode' for kids
   elseif type == "#" then -- blue dot, flip to red
     flipBallAt(nx, ny)
+    if dotType(0, frame.touchLead) == "0" then
+      ringsRemain = ringsRemain - 1
+      currentLevel[ny][nx] = " "
+    end
   elseif type == "g" then
     goldJump()
   elseif type == "*" then
     bouncePlayer()
   elseif type == "0" then
-    ringsCollected = ringsCollected + 1
+    ringsRemain = ringsRemain - 1
     currentLevel[ny][nx] = " "
   end
 end
@@ -565,7 +599,7 @@ function drawTails()
   love.graphics.setFont(player)
 
   -- shadow
-  leftStr("H", (screenWidth/2) - 22, screenHeight - 182, 2)
+  leftStr("H", (screenWidth/2) - 22, screenHeight - 182 + frame.avatarOffset, 2)
   local height = 0
 
   -- body
@@ -575,12 +609,17 @@ function drawTails()
     leftStr(("KJIKJIKJI"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182 - height, 2)
   else
     local b = math.floor(frame.player % 12) + 1
-    leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182, 2)
+    leftStr(("ABCDEFGFEDCB"):sub(b,b), (screenWidth/2) - 22, screenHeight - 182 + frame.avatarOffset, 2)
   end
 
   -- the tail
   local t = math.floor((levelTime * 10) % 7) + 1
-  leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174 - height, 2)
+  leftStr(("0123456"):sub(t,t), (screenWidth/2) - 12, screenHeight - 174 - height + frame.avatarOffset, 2)
+
+
+  if blueBallRemain < 1 then
+    love.graphics.draw(winJumpImg, (screenWidth / 2) - 110, screenHeight + 200 - frame.avatarOffset, 0, 2, 2, 0, 0)
+  end
 end
 
 function drawNormal()
@@ -597,7 +636,7 @@ function drawNormal()
   else
     mesh:setTexture( texture2 )
   end
-  love.graphics.draw(mesh)
+  love.graphics.draw(mesh, 0, frame.avatarOffset)
   love.graphics.setShader()
 
   -- dots
@@ -611,10 +650,10 @@ function drawNormal()
   for i=#(posTable.mov[pidx]),1,-1 do -- table of offsets (going backward for z order)
     local pos = posTable.mov[pidx][i]
     -- dx, dy, tx, ty, xf, yf, size
-    drawDotPosition(pos[1], pos[2], pos[3], pos[4], xf, yf, pos[5])
+    drawDotPosition(pos[1], pos[2], pos[3], pos[4] - frame.avatarOffset, xf, yf, pos[5])
     if (pos[1] ~= 0) then -- flipped on y axis
       -- dx, dy, tx, ty, xf, yf, size
-      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4], xf, yf, pos[5])
+      drawDotPosition(-(pos[1]), pos[2], 320 - pos[3], pos[4] - frame.avatarOffset, xf, yf, pos[5])
     end
   end -- end of dots
   love.graphics.setFont(font)
@@ -771,15 +810,17 @@ function drawUI()
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
   else
     leftStr( "<"..blueBallRemain..">", 10, 10, 1)
-    rightStr("["..ringsCollected.."]", screenWidth - 10, 10, 1)
+    rightStr("["..ringsRemain.."]", screenWidth - 10, 10, 1)
 
     if levelTime < 3 then
+      centreFontStr( "up to move forward", screenWidth / 2, (screenHeight / 2) - 40, 1, font)
       centreFontStr( "(get blue spheres)", screenWidth / 2, screenHeight / 2, 2, font)
       centreFontStr( "left and right to turn", screenWidth / 2, screenHeight - 60, 1, font)
-      centreFontStr( "up and down to change speed", screenWidth / 2, screenHeight - 40, 1, font)
+      centreFontStr( "spacebar to jump", screenWidth / 2, screenHeight - 40, 1, font)
     end
     if blueBallRemain < 1 then
       centreFontStr( "(you win)", screenWidth / 2, screenHeight / 2, 2, font)
+      centreFontStr( "spacebar to continue", screenWidth / 2, screenHeight - 40, 1, font)
     end
   end
 end
