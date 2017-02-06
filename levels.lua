@@ -5,7 +5,7 @@
 -- must be the same length
 
 
-return { -- very basic learning level
+return { -- [1] very basic learning level
   {rotation = 1, ringsAvail = 9, layout = {
 "************x x",
 "*          *x x",
@@ -18,7 +18,7 @@ return { -- very basic learning level
 "               ",
 "xxxxxxxxxxxxx x"
   }},
--- learning to jump
+-- [2] learning to jump
 {rotation = 0, ringsAvail = 30, layout = {
   "*****************x",
   "*  s*           *x",
@@ -32,7 +32,7 @@ return { -- very basic learning level
   "*****************x",
   "xxxxxxxxxxxxxxxxxx"
     }},
-  { -- Level [1]
+  { -- Level 1 [3]
     rotation = 0, ringsAvail = 64, layout = {
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -68,7 +68,7 @@ return { -- very basic learning level
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 }
   },
-  { -- level[2]
+  { -- level 2 [4]
     rotation = 3, ringsAvail = 111, layout = {
 "xxxx   xxxxxxxxxxxxxxxxxxxxxxxxx",
 "xxxx   xxxxxxxxxxxxxxxx         ",
@@ -86,7 +86,7 @@ return { -- very basic learning level
 "xxxxxxxxxxx           xxx*   *xx",
 "xxxxx****xx           xxx*   ***",
 "     ####     #####   xxx*      ",
-"     ####     #####   xxx*      ",
+"     ####     #####   xx*       ",
 "     ####     #####   xxx*      ",
 "xxxxx****xx           xxx*   ***",
 "xxxxxxxxxxx           xxx*   *xx",
@@ -104,8 +104,8 @@ return { -- very basic learning level
 "x         xxxxxxxxxxxxxxxxxxxxxx"
 }
   },
-  { -- level[3]
-    rotation = 0, ringsAvail = 111, layout = {
+  { -- level3 [5]
+    rotation = 0, ringsAvail = 118-32, layout = {
 "xxxxxxxxxxxxxxxxxxxxxxxxx*#*xxxx",
 "xs     xx      **      xx      x",
 "x      xx      ## #### xx      x",

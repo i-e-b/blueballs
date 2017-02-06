@@ -343,6 +343,13 @@ function transitionTrigger()
   end
 end
 
+function levelTile(y,x)
+  local px = ((x-1) % levelCols) + 1  -- 1-based indexing is stupid
+  local py = ((y-1) % levelRows) + 1  -- very stupid
+
+  return currentLevel[py][px]
+end
+
 -- true if any of the position's 8 neighbors are blue balls
 -- that are shared with the 8-conn blue balls of the parent
 -- px,py: position of the parent
@@ -350,43 +357,44 @@ end
 function hasBlue8Conn(px,py, dx, dy)
   local x = px+dx
   local y = py+dy
+
   if (dx == 1) then
     if (dy == 1) then
-      if (currentLevel[y - 1][x    ] == '#') then return true end
-      if (currentLevel[y    ][x - 1] == '#') then return true end
+      if (levelTile(y - 1,x    ) == '#') then return true end
+      if (levelTile(y    ,x - 1) == '#') then return true end
     elseif (dy == 0) then
-      if (currentLevel[y - 1][x - 1] == '#') then return true end
-      if (currentLevel[y - 1][x    ] == '#') then return true end
-      if (currentLevel[y + 1][x - 1] == '#') then return true end
-      if (currentLevel[y + 1][x    ] == '#') then return true end
+      if (levelTile(y - 1,x - 1) == '#') then return true end
+      if (levelTile(y - 1,x    ) == '#') then return true end
+      if (levelTile(y + 1,x - 1) == '#') then return true end
+      if (levelTile(y + 1,x    ) == '#') then return true end
     elseif (dy == -1) then
-      if (currentLevel[y + 1][x    ] == '#') then return true end
-      if (currentLevel[y    ][x - 1] == '#') then return true end
+      if (levelTile(y + 1,x    ) == '#') then return true end
+      if (levelTile(y    ,x - 1) == '#') then return true end
     end
   elseif (dx == 0) then
     if (dy == 1) then
-      if (currentLevel[y - 1][x - 1] == '#') then return true end
-      if (currentLevel[y    ][x - 1] == '#') then return true end
-      if (currentLevel[y - 1][x + 1] == '#') then return true end
-      if (currentLevel[y    ][x + 1] == '#') then return true end
+      if (levelTile(y - 1,x - 1) == '#') then return true end
+      if (levelTile(y    ,x - 1) == '#') then return true end
+      if (levelTile(y - 1,x + 1) == '#') then return true end
+      if (levelTile(y    ,x + 1) == '#') then return true end
     elseif (dy == -1) then
-      if (currentLevel[y    ][x - 1] == '#') then return true end
-      if (currentLevel[y + 1][x - 1] == '#') then return true end
-      if (currentLevel[y    ][x + 1] == '#') then return true end
-      if (currentLevel[y + 1][x + 1] == '#') then return true end
+      if (levelTile(y    ,x - 1) == '#') then return true end
+      if (levelTile(y + 1,x - 1) == '#') then return true end
+      if (levelTile(y    ,x + 1) == '#') then return true end
+      if (levelTile(y + 1,x + 1) == '#') then return true end
     end
   elseif (dx == -1) then
     if (dy == 1) then
-      if (currentLevel[y - 1][x    ] == '#') then return true end
-      if (currentLevel[y    ][x + 1] == '#') then return true end
+      if (levelTile(y - 1,x    ) == '#') then return true end
+      if (levelTile(y    ,x + 1) == '#') then return true end
     elseif (dy == 0) then
-      if (currentLevel[y - 1][x + 1] == '#') then return true end
-      if (currentLevel[y - 1][x    ] == '#') then return true end
-      if (currentLevel[y + 1][x + 1] == '#') then return true end
-      if (currentLevel[y + 1][x    ] == '#') then return true end
+      if (levelTile(y - 1,x + 1) == '#') then return true end
+      if (levelTile(y - 1,x    ) == '#') then return true end
+      if (levelTile(y + 1,x + 1) == '#') then return true end
+      if (levelTile(y + 1,x    ) == '#') then return true end
     elseif (dy == -1) then
-      if (currentLevel[y + 1][x    ] == '#') then return true end
-      if (currentLevel[y    ][x + 1] == '#') then return true end
+      if (levelTile(y + 1,x    ) == '#') then return true end
+      if (levelTile(y    ,x + 1) == '#') then return true end
     end
   end
   return false
@@ -397,16 +405,16 @@ end
 -- excludes (ox,oy) from the list
 function red4Conns(x,y, ox, oy)
   local list = {}
-  if (currentLevel[y][x - 1] == "x") and ((ox ~= (x - 1)) or (oy ~= y)) and hasBlue8Conn(x,y, -1,0) then
+  if (levelTile(y,x - 1) == "x") and ((ox ~= (x - 1)) or (oy ~= y)) and hasBlue8Conn(x,y, -1,0) then
     table.insert(list, {x=(x - 1), y=y,       px=x, py=y})
   end
-  if (currentLevel[y][x + 1] == "x") and ((ox ~= (x + 1)) or (oy ~= y)) and hasBlue8Conn(x,y, 1,0) then
+  if (levelTile(y,x + 1) == "x") and ((ox ~= (x + 1)) or (oy ~= y)) and hasBlue8Conn(x,y, 1,0) then
     table.insert(list, {x=(x + 1), y=y,       px=x, py=y})
   end
-  if (currentLevel[y - 1][x] == "x") and ((ox ~= x) or (oy ~= (y - 1))) and hasBlue8Conn(x,y, 0,-1) then
+  if (levelTile(y - 1,x) == "x") and ((ox ~= x) or (oy ~= (y - 1))) and hasBlue8Conn(x,y, 0,-1) then
     table.insert(list, {x=x,       y=(y - 1), px=x, py=y})
   end
-  if (currentLevel[y + 1][x] == "x") and ((ox ~= x) or (oy ~= (y + 1))) and hasBlue8Conn(x,y, 0,1) then
+  if (levelTile(y + 1,x) == "x") and ((ox ~= x) or (oy ~= (y + 1))) and hasBlue8Conn(x,y, 0,1) then
     table.insert(list, {x=x,       y=(y + 1), px=x, py=y})
   end
   return list
