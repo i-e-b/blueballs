@@ -24,7 +24,9 @@ local templateFrame = { -- frame and transition info
   rightTurnLatch = false, -- pressed right control
   jumpLatch = false,
   jumpHeight = 1,
-  avatarOffset = 0,  -- for level transition
+  avatarOffset = 0,   -- for level transition
+  fadeStep = 1,       -- also for level transition
+  perfectTimer = 3,
 }
 local templateWorldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
@@ -164,6 +166,20 @@ function P(idx)
   elseif (i == 8) then shader:sendColor( "palette", A, A, A, B, B, B, B, A, X) end
 end
 
+function updateLevelTransition(dt)
+  frame.avatarOffset = math.min(600, frame.avatarOffset + (dt * 800))
+  if (frame.fadeStep > 0) then
+    frame.fadeStep = math.min(1, frame.fadeStep + dt)
+  elseif (love.keyboard.isDown("space")) and (frame.avatarOffset > 300) then
+    frame.fadeStep = math.min(1, frame.fadeStep + dt)
+  end
+
+  if (frame.fadeStep >= 1) then
+    localLevelNumber = localLevelNumber + 1
+    loadLevel(localLevelNumber)
+  end
+end
+
 function love.update(dt)
   if (dt > 0.1) then return end
   levelTime = levelTime + dt
@@ -172,15 +188,16 @@ function love.update(dt)
   local tstep = 0
   local qstep = 0
   if blueBallRemain > 0 then
+    frame.fadeStep = math.max(0, frame.fadeStep - dt)
     tstep = dt * worldPos.speed
     qstep = tstep / 4
     readControls()
   else
-    frame.avatarOffset = math.min(600, frame.avatarOffset + (dt * 800))
-    if (love.keyboard.isDown("space")) and (frame.avatarOffset > 300) then
-      localLevelNumber = localLevelNumber + 1
-      loadLevel(localLevelNumber)
-    end
+    updateLevelTransition(dt)
+  end
+
+  if ringsRemain < 1 then
+    frame.perfectTimer = math.max(0, frame.perfectTimer - dt)
   end
 
   -- do position updates
@@ -193,18 +210,22 @@ function love.update(dt)
     worldPos.rot = math.floor(worldPos.rot + 0.5)
   end
 
+  local jumpThreshold = 4 -- for easy mode. Normal should be 0
+
   if worldPos.animSteps > 4 then worldPos.animSteps = worldPos.animSteps - 4 end
   if (worldPos.animSteps <= 0) then
-    if (worldPos.canTurn) and (worldPos.jump <= 0) and (frame.leftTurnLatch) then
+    if (worldPos.canTurn) and (worldPos.jump <= jumpThreshold) and (frame.leftTurnLatch) then
       frame.leftTurnLatch = false
       worldPos.drot = -1
+      worldPos.jump = 0
       worldPos.isTurning = true
       worldPos.canTurn = false
       worldPos.animSteps = 3.2
       worldPos.rot = worldPos.rot - 0.125
-    elseif (worldPos.canTurn) and (worldPos.jump <= 0) and (frame.rightTurnLatch) then
+    elseif (worldPos.canTurn) and (worldPos.jump <= jumpThreshold) and (frame.rightTurnLatch) then
       frame.rightTurnLatch = false
       worldPos.drot = 1
+      worldPos.jump = 0
       worldPos.isTurning = true
       worldPos.canTurn = false
       worldPos.animSteps = 3.2
@@ -238,12 +259,14 @@ function love.update(dt)
   end
 
   -- trigger ball touch transitions
-  local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
-  setTouchLead()
-  if (worldPos.jump <= 0) and ((frame.prevX ~= touchX) or (frame.prevY ~= touchY)) then
-    transitionTrigger()
-    frame.prevX = touchX
-    frame.prevY = touchY
+  if not worldPos.isTurning then
+    local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
+    setTouchLead()
+    if (worldPos.jump <= 0) and ((frame.prevX ~= touchX) or (frame.prevY ~= touchY)) then
+      transitionTrigger()
+      frame.prevX = touchX
+      frame.prevY = touchY
+    end
   end
 
   -- jump. We do this after triggers so you can't bunny hop over everything
@@ -583,11 +606,11 @@ function love.draw()
 
   drawUI()
 
-  -- fade here?
-  if false then
+  -- fade here
+  if (frame.fadeStep > 0) then
     love.graphics.setBlendMode("add")
-    local f = math.min(levelTime * 100, 255)
-    local f2 = math.min((levelTime * 100) - f, 255)
+    local f = math.min(frame.fadeStep * 511, 255)
+    local f2 = math.min((frame.fadeStep * 511) - f, 255)
   	love.graphics.setColor(f,f,f2)
   	love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
   	love.graphics.setColor(255,255,255)
@@ -821,6 +844,9 @@ function drawUI()
     if blueBallRemain < 1 then
       centreFontStr( "(you win)", screenWidth / 2, screenHeight / 2, 2, font)
       centreFontStr( "spacebar to continue", screenWidth / 2, screenHeight - 40, 1, font)
+    end
+    if (ringsRemain < 1) and (frame.perfectTimer > 0) then
+      centreFontStr( "(perfect!)", screenWidth / 2, screenHeight / 2, 2, font)
     end
   end
 end

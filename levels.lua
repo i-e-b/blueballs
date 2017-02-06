@@ -5,7 +5,33 @@
 -- must be the same length
 
 
-return {
+return { -- very basic learning level
+  {rotation = 1, ringsAvail = 9, layout = {
+"************x x",
+"*          *x x",
+"*     ###  *x x",
+"*#s   ###  *x x",
+"*     ###  *x x",
+"*          *x x",
+"************x x",
+"xxxxxxxxxxxxx x",
+"               ",
+"xxxxxxxxxxxxx x"
+  }},
+-- learning to jump
+{rotation = 0, ringsAvail = 30, layout = {
+  "*****************x",
+  "*  s*           *x",
+  "*   *  #######  *x",
+  "*****  #######  *x",
+  "*###*  #######  *x",
+  "*###*           *x",
+  "*###*************x",
+  "*       ##      *x",
+  "*       ##      *x",
+  "*****************x",
+  "xxxxxxxxxxxxxxxxxx"
+    }},
   { -- Level [1]
     rotation = 0, ringsAvail = 64, layout = {
 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -77,6 +103,41 @@ return {
 "x         xxxxxxxxxxxxxxxxxxxxxx",
 "x         xxxxxxxxxxxxxxxxxxxxxx"
 }
-  }
+  },
+  { -- level[3]
+    rotation = 0, ringsAvail = 111, layout = {
+"xxxxxxxxxxxxxxxxxxxxxxxxx*#*xxxx",
+"xs     xx      **      xx      x",
+"x      xx      ## #### xx      x",
+"x  ##  xx  **  ** #### xx  **  x",
+"x  ##  xx  **  xx #### xx  **  x",
+"x      xx      xx #### xx      x",
+"x      xx      xx      xx      x",
+"x*#*xxxxx*#*xxxxx*#*xxxxxxxx*#*x",
+"x*#*xxxxx*#*xxxxx*#*xxxxxxxx*#*x",
+"x      xx      xx      xx      x",
+"x #### xx      xx      xx #### x",
+"x #### xx  **  xx  **  xx #### x",
+"x #### **  **  xx  **  ** #### x",
+"x #### ##      xx      ## #### x",
+"x      **      xx      **      x",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"x      **      xx      **      x",
+"x #### ##      xx      ##      x",
+"x #### **  **  xx  **  **  ##  x",
+"x #### xx  **  **  **  xx  ##  x",
+"x #### xx      ##      xx      x",
+"x      xx      **      xx      x",
+"x*#*xxxxxxxxxxxxxxxxxxxxxxxx*#*x",
+"x*#*xxxxxxxxxxxxxxxxxxxxxxxx*#*x",
+"x      xx      **      xx      x",
+"x      xx      ## #### xx  *   x",
+"x  **  xx  **  ** #### xx    * x",
+"x  **  **  **  xx #### xx *    x",
+"x      ##      xx #### xx   *  x",
+"x      **      xx      xx      x",
+"xxxxxxxxxxxxxxxxxxxxxxxxx*#*xxxx"
+  }}
 
 }
