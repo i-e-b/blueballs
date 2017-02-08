@@ -260,10 +260,13 @@ function love.update(dt)
 
   -- trigger ball touch transitions
   if not worldPos.isTurning then
-    local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
     setTouchLead()
+    local touchX,touchY = offsetToAbsolute(0, frame.touchLead)
     if (worldPos.jump <= 0) and ((frame.prevX ~= touchX) or (frame.prevY ~= touchY)) then
       transitionTrigger()
+      frame.prevX = touchX
+      frame.prevY = touchY
+    elseif (worldPos.jump > 0) then -- easy mode only...
       frame.prevX = touchX
       frame.prevY = touchY
     end
@@ -869,6 +872,6 @@ function rightStr(str, x, y, scale)
 end
 function centreFontStr(str, x, y, scale, fnt)
   scale = scale or 1
-  local w = scale * fnt:getWidth(str) / 2
+  local w = (scale * fnt:getWidth(str)) / 2
   love.graphics.print(str, math.floor(x - w), math.floor(y), 0, scale)
 end

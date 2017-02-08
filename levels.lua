@@ -7,26 +7,26 @@
 
 return { -- [1] very basic learning level
   {rotation = 1, ringsAvail = 9, layout = {
-"************x x",
-"*          *x x",
-"*     ###  *x x",
-"*#s   ###  *x x",
-"*     ###  *x x",
-"*          *x x",
-"************x x",
-"xxxxxxxxxxxxx x",
-"               ",
-"xxxxxxxxxxxxx x"
+"***********x x",
+"*         *x x",
+"*    ###  *x x",
+"*#s  ###  *x x",
+"*    ###  *x x",
+"*         *x x",
+"***********x x",
+"xxxxxxxxxxxx x",
+"              ",
+"xxxxxxxxxxxx x"
   }},
 -- [2] learning to jump
-{rotation = 0, ringsAvail = 30, layout = {
+{rotation = 0, ringsAvail = 21, layout = {
   "*****************x",
   "*  s*           *x",
   "*   *  #######  *x",
   "*****  #######  *x",
-  "*###*  #######  *x",
-  "*###*           *x",
-  "*###*************x",
+  "*   *  #######  *x",
+  "* # *           *x",
+  "*   *************x",
   "*       ##      *x",
   "*       ##      *x",
   "*****************x",
@@ -105,7 +105,7 @@ return { -- [1] very basic learning level
 }
   },
   { -- level3 [5]
-    rotation = 0, ringsAvail = 118-32, layout = {
+    rotation = 0, ringsAvail = 80, layout = {
 "xxxxxxxxxxxxxxxxxxxxxxxxx*#*xxxx",
 "xs     xx      **      xx      x",
 "x      xx      ## #### xx      x",
@@ -138,6 +138,40 @@ return { -- [1] very basic learning level
 "x      ##      xx #### xx   *  x",
 "x      **      xx      xx      x",
 "xxxxxxxxxxxxxxxxxxxxxxxxx*#*xxxx"
+  }},
+  { -- level4 [6]
+    rotation = 3, ringsAvail = 80, layout = {
+"*************xx***xx************",
+"*xxxxxxxxxxxxxx # xxxxxxxxxxxxx*",
+"*xxxxxxxxxxxxxx   xxxxxxxxxxxxx*",
+"*xx                          xx*",
+"*xx           *#**           xx*",
+"*xx  ******   *###   ******  xx*",
+"*xx  *#####  s****   #####*  xx*",
+"*xx  *###**          **###*  xx*",
+"*xx  *###*  x  **  x  *###*  xx*",
+"*xx  ***#*  x  **  x  ***#*  xx*",
+"*xx         x      x         xx*",
+"*xx       xxx #### xxx       xx*",
+"*xx           ####           xx*",
+"*xx   *#*   ########   *#*   xx*",
+"*xx   *#* **###**###** *#*   xx*",
+"*xx   *#* **###**###** *#*   xx*",
+"*xx   *#*   ########   *#*   xx*",
+"*xx           ####           xx*",
+"*xx       xxx #### xxx       xx*",
+"*xx         x      x         xx*",
+"*xx  *#*    x  **  x  *#*    xx*",
+"*xx  *#***  x  **  x  *#***  xx*",
+"*xx  *###*            *###*  xx*",
+"*xx  *###**          **###*  xx*",
+"*xx  *#####   ****   #####*  xx*",
+"*xx  ******   ###*   ******  xx*",
+"*xx           **#*           xx*",
+"*xx                          xx*",
+"*xxxxxxxxxxxxxx # xxxxxxxxxxxxx*",
+"*xxxxxxxxxxxxxx***xxxxxxxxxxxxx*",
+"*************xx # xx************"
   }}
 
 }
