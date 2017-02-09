@@ -14,6 +14,7 @@ local currentLevel = {}
 local localLevelNumber = 1
 local levelRows = 0
 local levelCols = 0
+local gamepad
 local templateFrame = { -- frame and transition info
   player = 3, -- player animation frame
   prevX = 0,  -- previous 'touch' position (slightly leads the worldPos x,y)
@@ -170,7 +171,7 @@ function updateLevelTransition(dt)
   frame.avatarOffset = math.min(600, frame.avatarOffset + (dt * 800))
   if (frame.fadeStep > 0) then
     frame.fadeStep = math.min(1, frame.fadeStep + dt)
-  elseif (love.keyboard.isDown("space")) and (frame.avatarOffset > 300) then
+  elseif (frame.jumpLatch) and (frame.avatarOffset > 300) then
     frame.fadeStep = math.min(1, frame.fadeStep + dt)
   end
 
@@ -187,13 +188,14 @@ function love.update(dt)
 
   local tstep = 0
   local qstep = 0
+  readControls()
   if blueBallRemain > 0 then
     frame.fadeStep = math.max(0, frame.fadeStep - dt)
     tstep = dt * worldPos.speed
     qstep = tstep / 4
-    readControls()
   else
     updateLevelTransition(dt)
+    frame.jumpLatch = false
   end
 
   if ringsRemain < 1 then
@@ -279,8 +281,8 @@ function love.update(dt)
 end
 
 function regularJump()
-  worldPos.jump = 8
-  frame.jumpHeight = 8
+  worldPos.jump = 7
+  frame.jumpHeight = 7
   frame.jumpLatch = false
   worldPos.canTurn = false
 end
@@ -300,19 +302,47 @@ function readControls()
     goldJump()
   end
 
-  -- limit turn pickup to improve 'feel'
-  if (worldPos.animSteps > 0.7) and (worldPos.animSteps < 3) then
-    if (love.keyboard.isDown("left")) then frame.leftTurnLatch = true end
-    if (love.keyboard.isDown("right")) then frame.rightTurnLatch = true end
+  local left = false
+  local right = false
+  local up = false
+  local jump = false
+
+  if gamepad then
+    local dx = gamepad:getAxis(1)
+    local dy = gamepad:getAxis(2)
+    if dx == 1 then right = true end
+    if dx == -1 then left = true end
+    if gamepad:isDown(1,2,3,4) then jump = true end
+    if dy == -1 then up = true end
   end
-  if (love.keyboard.isDown("space")) then
-    frame.jumpLatch = true
-  end
-  if (love.keyboard.isDown("up")) then
+  if love.keyboard.isDown("left") then left = true end
+  if love.keyboard.isDown("right") then right = true end
+  if love.keyboard.isDown("space") then jump = true end
+  if love.keyboard.isDown("up") then up = true end
+
+  if (up) and (not frame.headingForward) then
     frame.headingForward = true
     frame.leftTurnLatch = false
     frame.rightTurnLatch = false
     frame.jumpLatch = false
+  else
+    -- limit turn pickup to improve 'feel'
+    if (worldPos.animSteps > 0.7) and (worldPos.animSteps < 3) then
+      if left then frame.leftTurnLatch = true end
+      if right then frame.rightTurnLatch = true end
+    end
+    if jump then frame.jumpLatch = true end
+  end
+end
+
+-- connect joysticks and gamepads
+function love.joystickadded(joystick)
+  gamepad = joystick
+end
+
+function love.joystickremoved(joystick)
+  if (gamepad == joystick) then
+    gamepad = nil
   end
 end
 
@@ -842,6 +872,13 @@ function drawUI()
     rightStr( " x y  ["..(math.floor(worldPos.x))..".."..(math.floor(worldPos.y)).."]", screenWidth - 10, 10, 1)
     rightStr( "dx dy ["..(math.floor(worldPos.dx))..".."..(math.floor(worldPos.dy)).."]", screenWidth - 10, 40, 1)
     rightStr( "mouse ["..(math.floor(x * 2000)/1000)..".."..(math.floor(y * 1450)/1000).."]", screenWidth - 10, 70, 1)
+
+    if gamepad then
+      local dx = gamepad:getAxis(1)
+      local dy = gamepad:getAxis(2)
+      leftStr( "pad dx dy <"..dx.."]<"..dy.."]", 10, 80, 1)
+      if gamepad:isDown(1,2,3,4) then frame.jumpLatch = true end
+    end
   else
     leftStr( "<"..blueBallRemain..">", 10, 10, 1)
     rightStr("["..ringsRemain.."]", screenWidth - 10, 10, 1)
@@ -854,7 +891,7 @@ function drawUI()
     end
     if blueBallRemain < 1 then
       centreFontStr( "(you win)", screenWidth / 2, screenHeight / 2, 2, font)
-      centreFontStr( "spacebar to continue", screenWidth / 2, screenHeight - 40, 1, font)
+      centreFontStr( "jump to continue", screenWidth / 2, screenHeight - 40, 1, font)
     end
     if (ringsRemain < 1) and (frame.perfectTimer > 0) then
       centreFontStr( "(perfect!)", screenWidth / 2, screenHeight / 2, 2, font)
