@@ -1,6 +1,7 @@
 local screenWidth, screenHeight, meshHeight, meshTop
 local font, stars, red, blue, gold, player, ring_1
 local music
+local bumpSnd, flipSnd, jumpSnd, ringSnd, superJumpSnd, transformSnd, winSnd
 local winJumpImg
 
 local showDebug = false
@@ -29,6 +30,7 @@ local templateFrame = { -- frame and transition info
   fadeStep = 1,       -- also for level transition
   perfectTimer = 3,
 }
+
 local templateWorldPos = { -- world state
                   rot = 0,       -- out of 4 (0 to 3)
                   drot = 0,      -- rotate direction (-1 or 1)
@@ -114,8 +116,18 @@ function love.load()
 
   loadLevel(localLevelNumber)
 
-  --music = love.audio.newSource("popcorn.mod")
-  --music:play()
+  bumpSnd = love.audio.newSource("bump.wav", "static")
+  flipSnd = love.audio.newSource("flip.wav", "static")
+  jumpSnd = love.audio.newSource("jump.wav", "static")
+  ringSnd = love.audio.newSource("ring.wav", "static")
+  superJumpSnd = love.audio.newSource("superjump.wav", "static")
+  transformSnd = love.audio.newSource("transform.wav", "static")
+  winSnd = love.audio.newSource("win.wav", "static")
+
+  music = love.audio.newSource("popcorn.mod")
+  music:setLooping(true)
+  music:setVolume(0.7)
+  music:play()
 end
 
 function loadLevel(idx)
@@ -168,6 +180,10 @@ function P(idx)
 end
 
 function updateLevelTransition(dt)
+  if (frame.avatarOffset <= 0) then
+    winSnd:rewind()
+    winSnd:play()
+  end
   frame.avatarOffset = math.min(600, frame.avatarOffset + (dt * 800))
   if (frame.fadeStep > 0) then
     frame.fadeStep = math.min(1, frame.fadeStep + dt)
@@ -281,12 +297,16 @@ function love.update(dt)
 end
 
 function regularJump()
+  jumpSnd:rewind()
+  jumpSnd:play()
   worldPos.jump = 7
   frame.jumpHeight = 7
   frame.jumpLatch = false
   worldPos.canTurn = false
 end
 function goldJump()
+  superJumpSnd:rewind()
+  superJumpSnd:play()
   worldPos.jump = 24
   frame.jumpHeight = 24
   worldPos.speed = 20
@@ -347,7 +367,7 @@ function love.joystickremoved(joystick)
 end
 
 function targetSpeed()
-  return 7 -- TODO: calculate based on difficulty and progress through the level
+  return 5 -- TODO: calculate based on difficulty and progress through the level
 end
 
 function setTouchLead()
@@ -359,8 +379,12 @@ function transitionTrigger()
   local nx, ny = offsetToAbsolute(0, frame.touchLead)
   if type == "x" then -- impact! FAIL!
     -- TODO: handle failure
+
     bouncePlayer() -- boucing on red can be 'easy mode' for kids
   elseif type == "#" then -- blue dot, flip to red
+
+    flipSnd:rewind()
+    flipSnd:play()
     flipBallAt(nx, ny)
     if dotType(0, frame.touchLead) == "0" then
       ringsRemain = ringsRemain - 1
@@ -371,6 +395,8 @@ function transitionTrigger()
   elseif type == "*" then
     bouncePlayer()
   elseif type == "0" then
+    ringSnd:rewind()
+    ringSnd:play()
     ringsRemain = ringsRemain - 1
     currentLevel[ny][nx] = " "
   end
@@ -552,6 +578,11 @@ function flipBallAt(nx, ny)
     end
   end
 
+  if (#pops > 0) then
+    transformSnd:rewind()
+    transformSnd:play()
+  end
+
   -- Finally, pop all the trapped blue balls and their 8-connected red balls
   for i = 1,#pops do
     -- flip the blue to a ring
@@ -597,6 +628,9 @@ function appendMap(arry, obj, index)
 end
 
 function bouncePlayer()
+  bumpSnd:rewind()
+  bumpSnd:play()
+
   worldPos.speed = - worldPos.speed
   worldPos.jump = 0
   local tx, ty = offsetToAbsolute(0, -0.7)
